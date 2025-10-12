@@ -18,12 +18,16 @@ export default function DashboardPage() {
 
     const ProblemCard: React.FC<{ problem: Problem }> = ({ problem }) => (
         <div 
-            className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border border-slate-200"
+            className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border border-slate-200 group"
             onClick={() => router.push(`/problems/${problem.id}`)}
         >
             <h3 className="text-xl font-bold text-slate-800 truncate">{problem.title}</h3>
             <p className="text-slate-600 mt-2 h-12 overflow-hidden text-ellipsis">{problem.prompt}</p>
-            <div className="text-right mt-4 text-sm font-semibold text-blue-600">Xem chi tiết &rarr;</div>
+            <div className="text-right mt-4 text-sm font-semibold text-blue-600">
+                <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+                    Xem chi tiết &rarr;
+                </span>
+            </div>
         </div>
     );
   
@@ -39,7 +43,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-4xl font-bold text-slate-900">
                     {getHeading()}

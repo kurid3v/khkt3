@@ -90,7 +90,7 @@ export default function ExamsPage() {
   
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
           <div className="flex justify-between items-center mb-8">
               <h1 className="text-4xl font-bold text-slate-900">
                   Danh sách đề thi

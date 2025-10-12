@@ -49,7 +49,7 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <button onClick={onBack} className="mb-6 text-blue-600 font-semibold hover:underline">
                 &larr; {backButtonText}
             </button>
@@ -61,7 +61,7 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
 
             <main>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left/Main Column - Common for all users */}
+                    {/* Left/Main Column */}
                     <div className="lg:col-span-2 space-y-8">
                         {(currentUser.role !== 'student' || !problem.isRubricHidden) && (
                             <div>
@@ -106,7 +106,7 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
                         </div>
                     </div>
 
-                    {/* Right/Side Column */}
+                    {/* Right Sidebar */}
                     <div className="lg:col-span-1 space-y-8">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800 mb-4">Lịch sử nộp bài</h2>
@@ -131,19 +131,12 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
                                 </div>
                                 )}
                         </div>
-                         {/* Leaderboard for students remains in the sidebar */}
-                        {currentUser.role === 'student' && (
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800 mb-4">Bảng xếp hạng</h2>
                             <Leaderboard submissions={problemSubmissions} users={users} />
-                        )}
+                        </div>
                     </div>
                 </div>
-
-                {/* Teacher/Admin Only Section: Leaderboard now replaces the old submission list */}
-                {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                    <div className="mt-12 pt-8 border-t border-slate-200">
-                        <Leaderboard submissions={problemSubmissions} users={users} />
-                    </div>
-                )}
             </main>
         </div>
     );

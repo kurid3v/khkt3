@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
     const trClickableClass = `${trClass} cursor-pointer hover:bg-slate-50 transition-colors`;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <button onClick={() => router.push('/dashboard')} className="mb-6 text-blue-600 font-semibold hover:underline">
                 &larr; Quay lại trang chính
             </button>

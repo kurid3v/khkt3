@@ -104,7 +104,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
           <button onClick={() => router.push('/exams')} className="mb-6 text-blue-600 font-semibold hover:underline">
               &larr; Quay lại danh sách đề thi
           </button>
