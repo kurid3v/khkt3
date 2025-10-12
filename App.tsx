@@ -358,12 +358,7 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
             {currentUser && pageState.name !== 'exam_taking' && <Header 
-                user={currentUser} 
-                onLogout={handleLogout} 
-                onNavigateToDashboard={() => setPageState({ name: 'dashboard' })}
-                onNavigateToExams={() => setPageState({ name: 'exams_dashboard' })}
-                onNavigateToAllSubmissions={() => setPageState({ name: 'all_submissions' })}
-                onNavigateToAdmin={() => setPageState({ name: 'admin_dashboard' })}
+                user={currentUser}
             />}
             <main>
                 {renderPage()}
