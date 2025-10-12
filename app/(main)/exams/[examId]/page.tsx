@@ -25,7 +25,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
   const examProblems = problems.filter(p => p.examId === exam.id);
   const now = Date.now();
   const isExamOngoing = now >= exam.startTime && now <= exam.endTime;
-  const hasUserAttempted = examAttempts.some(att => att.examId === exam.id && att.studentId === currentUser.id);
+  const userAttempt = examAttempts.find(att => att.examId === exam.id && att.studentId === currentUser.id);
 
   const handleStartExam = () => {
       const newAttempt = startExamAttempt(exam.id);
@@ -35,6 +35,12 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
   };
 
   const handleStartExamClick = () => {
+    // If user is rejoining, don't ask for password again
+    if (userAttempt) {
+        router.push(`/exams/${exam.id}/take/${userAttempt.id}`);
+        return;
+    }
+    // If new attempt and password protected, show modal
     if (exam.password) {
       setIsPasswordModalOpen(true);
     } else {
@@ -134,20 +140,40 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
               </div>
                {currentUser.role === 'student' && (
                   <div className="mt-6 pt-6 border-t border-slate-200">
-                      {hasUserAttempted ? (
-                           <div className="text-center p-4 bg-green-50 text-green-800 rounded-lg font-semibold">Bạn đã hoàn thành bài thi này.</div>
-                      ) : isExamOngoing ? (
-                          <button
-                              onClick={handleStartExamClick}
-                              className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                          >
-                              Vào thi
-                          </button>
-                      ) : (
-                          <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">
-                              {now < exam.startTime ? 'Kỳ thi chưa bắt đầu.' : 'Kỳ thi đã kết thúc.'}
-                          </div>
-                      )}
+                      {(() => {
+                          if (userAttempt) {
+                              if (userAttempt.submittedAt) {
+                                  return <div className="text-center p-4 bg-green-50 text-green-800 rounded-lg font-semibold">Bạn đã hoàn thành bài thi này.</div>;
+                              }
+                              if (isExamOngoing) {
+                                  return (
+                                      <button
+                                          onClick={handleStartExamClick}
+                                          className="w-full px-6 py-4 bg-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                                      >
+                                          Tiếp tục làm bài
+                                      </button>
+                                  );
+                              }
+                              return <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">Kỳ thi đã kết thúc. Bạn đã không nộp bài kịp thời.</div>;
+                          } else {
+                              if (isExamOngoing) {
+                                  return (
+                                      <button
+                                          onClick={handleStartExamClick}
+                                          className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                      >
+                                          Vào thi
+                                      </button>
+                                  );
+                              }
+                              return (
+                                  <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">
+                                      {now < exam.startTime ? 'Kỳ thi chưa bắt đầu.' : 'Kỳ thi đã kết thúc.'}
+                                  </div>
+                              );
+                          }
+                      })()}
                   </div>
               )}
           </header>

@@ -152,18 +152,27 @@ const App: React.FC = () => {
     
     const handleStartExamAttempt = (examId: string) => {
         if (!currentUser) return;
-        const newAttempt: ExamAttempt = {
-            id: crypto.randomUUID(),
-            examId: examId,
-            studentId: currentUser.id,
-            startedAt: Date.now(),
-            fullscreenExits: [],
-            submissionIds: [],
-        };
-        const updatedAttempts = [...examAttempts, newAttempt];
-        setExamAttempts(updatedAttempts);
-        saveExamAttempts(updatedAttempts);
-        setPageState({ name: 'exam_taking', examId: examId, attemptId: newAttempt.id });
+
+        const existingAttempt = examAttempts.find(att => att.examId === examId && att.studentId === currentUser.id && !att.submittedAt);
+        
+        if (existingAttempt) {
+            // Resume existing attempt
+            setPageState({ name: 'exam_taking', examId: examId, attemptId: existingAttempt.id });
+        } else {
+             // Create new attempt
+            const newAttempt: ExamAttempt = {
+                id: crypto.randomUUID(),
+                examId: examId,
+                studentId: currentUser.id,
+                startedAt: Date.now(),
+                fullscreenExits: [],
+                submissionIds: [],
+            };
+            const updatedAttempts = [...examAttempts, newAttempt];
+            setExamAttempts(updatedAttempts);
+            saveExamAttempts(updatedAttempts);
+            setPageState({ name: 'exam_taking', examId: examId, attemptId: newAttempt.id });
+        }
     };
 
     const handleUpdateExamAttempt = (updatedAttempt: ExamAttempt) => {
@@ -349,6 +358,7 @@ const App: React.FC = () => {
                     user={currentUser}
                     onUpdateAttempt={handleUpdateExamAttempt}
                     onFinishExam={handleFinishExamAttempt}
+                    onExit={() => setPageState({ name: 'exam_detail', examId: takingExam.id })}
                 />;
             default:
                 return <LoginPage onLogin={handleLogin} onNavigateToSignUp={() => setPageState({ name: 'signup' })} />;

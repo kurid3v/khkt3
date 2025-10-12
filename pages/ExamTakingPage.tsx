@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Exam, Problem, ExamAttempt, User, Submission } from '../types';
 import Timer from '../components/Timer';
 import { gradeEssay } from '../services/geminiService';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 interface ExamTakingPageProps {
   exam: Exam;
@@ -10,11 +11,12 @@ interface ExamTakingPageProps {
   user: User;
   onUpdateAttempt: (attempt: ExamAttempt) => void;
   onFinishExam: (attempt: ExamAttempt, submissions: Submission[]) => void;
+  onExit: () => void;
 }
 
 type AnswersState = { [problemId: string]: string };
 
-const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt, user, onUpdateAttempt, onFinishExam }) => {
+const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt, user, onUpdateAttempt, onFinishExam, onExit }) => {
   const getInitialAnswers = (): AnswersState => {
       try {
         const saved = localStorage.getItem(`exam_answers_${attempt.id}`);
@@ -27,6 +29,7 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
   const [activeProblemId, setActiveProblemId] = useState<string>(problems[0]?.id || '');
   const [answers, setAnswers] = useState<AnswersState>(getInitialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const attemptRef = useRef(attempt); // Use ref to keep track of the latest attempt state in callbacks
 
   useEffect(() => {
@@ -118,6 +121,13 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
 
   }, [isSubmitting, problems, answers, user.id, exam.id, onFinishExam, attempt.id]);
 
+  const handleExit = () => {
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    }
+    onExit();
+  };
+
 
   if (isSubmitting) {
       return (
@@ -132,75 +142,92 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
   const activeProblem = problems.find(p => p.id === activeProblemId);
 
   return (
-    <div className="fixed inset-0 bg-slate-100 flex flex-col p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <header className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md flex justify-between items-center mb-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">{exam.title}</h1>
-                <p className="text-slate-500">{user.name}</p>
-            </div>
-            <div className="text-right">
-                <div className="font-semibold text-slate-700">Thời gian còn lại:</div>
-                <Timer expiryTimestamp={exam.endTime} onExpire={handleSubmitExam} />
-            </div>
-        </header>
+    <>
+        <div className="fixed inset-0 bg-slate-100 flex flex-col p-4 sm:p-6 lg:p-8">
+            {/* Header */}
+            <header className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">{exam.title}</h1>
+                    <p className="text-slate-500">{user.name}</p>
+                </div>
+                <div className="text-right">
+                    <div className="font-semibold text-slate-700">Thời gian còn lại:</div>
+                    <Timer expiryTimestamp={exam.endTime} onExpire={handleSubmitExam} />
+                </div>
+            </header>
 
-        {/* Main Content */}
-        <div className="flex-grow flex gap-6 overflow-hidden">
-            {/* Problem List */}
-            <nav className="w-1/4 flex-shrink-0 bg-white rounded-xl shadow-md p-4 overflow-y-auto">
-                <h2 className="text-lg font-bold text-slate-800 mb-3">Danh sách câu hỏi</h2>
-                <ul className="space-y-2">
-                    {problems.map((p, index) => (
-                        <li key={p.id}>
-                            <button 
-                                onClick={() => setActiveProblemId(p.id)}
-                                className={`w-full text-left p-3 rounded-lg font-semibold transition-colors ${
-                                    activeProblemId === p.id 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                            >
-                               Câu {index + 1}: {p.title}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            </nav>
+            {/* Main Content */}
+            <div className="flex-grow flex gap-6 overflow-hidden">
+                {/* Problem List */}
+                <nav className="w-1/4 flex-shrink-0 bg-white rounded-xl shadow-md p-4 overflow-y-auto">
+                    <h2 className="text-lg font-bold text-slate-800 mb-3">Danh sách câu hỏi</h2>
+                    <ul className="space-y-2">
+                        {problems.map((p, index) => (
+                            <li key={p.id}>
+                                <button 
+                                    onClick={() => setActiveProblemId(p.id)}
+                                    className={`w-full text-left p-3 rounded-lg font-semibold transition-colors ${
+                                        activeProblemId === p.id 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                                >
+                                Câu {index + 1}: {p.title}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
 
-            {/* Essay Area */}
-            <div className="w-3/4 flex-grow flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
-                {activeProblem ? (
-                    <>
-                        <div className="p-4 border-b border-slate-200 flex-shrink-0">
-                            <h3 className="font-bold text-lg text-slate-900">{activeProblem.title}</h3>
-                            <p className="text-slate-600 whitespace-pre-wrap mt-1">{activeProblem.prompt}</p>
+                {/* Essay Area */}
+                <div className="w-3/4 flex-grow flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
+                    {activeProblem ? (
+                        <>
+                            <div className="p-4 border-b border-slate-200 flex-shrink-0">
+                                <h3 className="font-bold text-lg text-slate-900">{activeProblem.title}</h3>
+                                <p className="text-slate-600 whitespace-pre-wrap mt-1">{activeProblem.prompt}</p>
+                            </div>
+                            <textarea
+                                value={answers[activeProblemId] || ''}
+                                onChange={(e) => handleAnswerChange(activeProblemId, e.target.value)}
+                                placeholder="Nhập câu trả lời của bạn vào đây..."
+                                className="w-full h-full flex-grow p-4 resize-none border-0 focus:ring-0 text-lg leading-relaxed"
+                            />
+                        </>
+                    ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <p className="text-slate-500">Chọn một câu hỏi để bắt đầu.</p>
                         </div>
-                        <textarea
-                            value={answers[activeProblemId] || ''}
-                            onChange={(e) => handleAnswerChange(activeProblemId, e.target.value)}
-                            placeholder="Nhập câu trả lời của bạn vào đây..."
-                            className="w-full h-full flex-grow p-4 resize-none border-0 focus:ring-0 text-lg leading-relaxed"
-                        />
-                    </>
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <p className="text-slate-500">Chọn một câu hỏi để bắt đầu.</p>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
+            
+            {/* Footer */}
+            <footer className="flex-shrink-0 mt-6 flex justify-between items-center">
+                <button
+                    onClick={() => setIsExitModalOpen(true)}
+                    className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-lg hover:bg-slate-700 transition-colors"
+                >
+                    Thoát
+                </button>
+                <button
+                    onClick={handleSubmitExam}
+                    className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+                >
+                    Nộp bài và kết thúc
+                </button>
+            </footer>
         </div>
-        
-        {/* Footer */}
-        <footer className="flex-shrink-0 mt-6 flex justify-end">
-            <button
-                onClick={handleSubmitExam}
-                className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors"
-            >
-                Nộp bài và kết thúc
-            </button>
-        </footer>
-    </div>
+        <ConfirmationModal
+            isOpen={isExitModalOpen}
+            onClose={() => setIsExitModalOpen(false)}
+            onConfirm={handleExit}
+            title="Xác nhận thoát"
+            message="Tiến trình của bạn đã được lưu. Bạn có thể quay lại làm bài thi sau, miễn là vẫn còn thời gian."
+            confirmButtonText="Xác nhận"
+            confirmButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
+    </>
   );
 };
 
