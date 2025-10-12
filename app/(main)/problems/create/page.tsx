@@ -9,7 +9,7 @@ import { parseRubric } from '@/services/geminiService';
 function CreateProblemContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const examId = searchParams.get('examId');
+  const examId = searchParams?.get('examId');
 
   const { addProblem } = useDataContext();
 
