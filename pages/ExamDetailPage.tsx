@@ -86,39 +86,39 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
             <tbody>
                 {studentAttempts.map(attempt => {
                     const student = users.find(u => u.id === attempt.studentId);
-                    
-                    const fullscreenExitTimestamps = attempt.fullscreenExits
-                        .map((ts, index) => `Lần ${index + 1}: ${new Date(ts).toLocaleTimeString('vi-VN')}`)
-                        .join('\n');
-
                     const hiddenEvents = attempt.visibilityStateChanges?.filter(c => c.state === 'hidden') || [];
-                    const hiddenTimestamps = hiddenEvents
-                        .map((event, index) => `Lần ${index + 1}: ${new Date(event.timestamp).toLocaleTimeString('vi-VN')}`)
-                        .join('\n');
                     const hiddenCount = hiddenEvents.length;
 
                     return (
                         <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
-                            <td className="p-3 font-semibold text-slate-800">{student?.name || 'Không rõ'}</td>
-                            <td className="p-3 text-slate-600">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
-                            <td className="p-3 text-slate-600">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
-                            <td className="p-3 text-center font-bold text-orange-600">
-                                <div 
-                                    className="flex items-center justify-center gap-1 cursor-help"
-                                    title={fullscreenExitTimestamps || "Không có lần thoát nào"}
-                                >
+                            <td className="p-3 font-semibold text-slate-800 align-top">{student?.name || 'Không rõ'}</td>
+                            <td className="p-3 text-slate-600 align-top">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
+                            <td className="p-3 text-slate-600 align-top">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
+                            <td className="p-3 text-center align-top">
+                                <div className="flex items-center justify-center gap-1 font-bold text-orange-600 mb-1">
                                     <EyeOffIcon />
                                     <span>{attempt.fullscreenExits.length}</span>
                                 </div>
+                                {attempt.fullscreenExits.length > 0 && (
+                                    <div className="text-xs text-slate-500 space-y-0.5">
+                                        {attempt.fullscreenExits.map((ts, index) => (
+                                            <p key={`fs-${index}`}>{new Date(ts).toLocaleTimeString('vi-VN')}</p>
+                                        ))}
+                                    </div>
+                                )}
                             </td>
-                            <td className={`p-3 text-center font-bold ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
-                                <div 
-                                    className="flex items-center justify-center gap-1 cursor-help"
-                                    title={hiddenTimestamps || "Không có lần mất tập trung nào"}
-                                >
+                            <td className="p-3 text-center align-top">
+                                 <div className={`flex items-center justify-center gap-1 font-bold mb-1 ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
                                     <ExclamationIcon />
                                     <span>{hiddenCount}</span>
                                 </div>
+                                {hiddenCount > 0 && (
+                                    <div className="text-xs text-slate-500 space-y-0.5">
+                                        {hiddenEvents.map((event, index) => (
+                                            <p key={`vis-${index}`}>{new Date(event.timestamp).toLocaleTimeString('vi-VN')}</p>
+                                        ))}
+                                    </div>
+                                )}
                             </td>
                         </tr>
                     );
