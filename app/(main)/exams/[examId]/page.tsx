@@ -6,7 +6,8 @@ import CalendarIcon from '@/components/icons/CalendarIcon';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
 import PasswordModal from '@/components/PasswordModal';
 import EyeOffIcon from '@/components/icons/EyeOffIcon';
-import type { Problem } from '@/types';
+import ExclamationIcon from '@/components/icons/ExclamationIcon';
+import type { Problem, ExamAttempt } from '@/types';
 
 
 export default function ExamDetailPage({ params }: { params: { examId: string } }) {
@@ -25,26 +26,36 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
   const examProblems = problems.filter(p => p.examId === exam.id);
   const now = Date.now();
   const isExamOngoing = now >= exam.startTime && now <= exam.endTime;
-  const userAttempt = examAttempts.find(att => att.examId === exam.id && att.studentId === currentUser.id);
+  
+  // Find the attempt for THIS specific exam
+  const userAttemptForThisExam = examAttempts.find(att => att.examId === exam.id && att.studentId === currentUser.id);
+  
+  // Find if the user has ANY ongoing attempt
+  const ongoingGlobalAttempt = examAttempts.find(att => att.studentId === currentUser.id && !att.submittedAt);
+  const otherOngoingExam = ongoingGlobalAttempt && ongoingGlobalAttempt.examId !== exam.id 
+    ? exams.find(e => e.id === ongoingGlobalAttempt.examId) 
+    : null;
 
-  const handleStartExam = () => {
+  const proceedToExam = () => {
+    if (userAttemptForThisExam) {
+      // Resume existing attempt
+      router.push(`/exams/${exam.id}/take/${userAttemptForThisExam.id}`);
+    } else {
+      // Create new attempt
       const newAttempt = startExamAttempt(exam.id);
       if (newAttempt) {
         router.push(`/exams/${exam.id}/take/${newAttempt.id}`);
       }
+    }
   };
 
   const handleStartExamClick = () => {
-    // If user is rejoining, don't ask for password again
-    if (userAttempt) {
-        router.push(`/exams/${exam.id}/take/${userAttempt.id}`);
-        return;
-    }
-    // If new attempt and password protected, show modal
     if (exam.password) {
+      // Always ask for password if one is set
       setIsPasswordModalOpen(true);
     } else {
-        handleStartExam();
+      // No password, proceed directly
+      proceedToExam();
     }
   };
 
@@ -52,7 +63,8 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
     if (password === exam.password) {
       setPasswordError('');
       setIsPasswordModalOpen(false);
-      handleStartExam();
+      // Password is correct, now proceed
+      proceedToExam();
     } else {
       setPasswordError('Mật khẩu không chính xác.');
     }
@@ -72,41 +84,55 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
     </tr>
   );
 
-  const MonitoringTab: React.FC = () => (
-     <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
-       <div className="overflow-x-auto">
-         <table className="w-full text-left">
-            <thead>
-                <tr className="border-b-2 border-slate-200">
-                    <th className="p-3 font-bold text-slate-600">Học sinh</th>
-                    <th className="p-3 font-bold text-slate-600">Bắt đầu lúc</th>
-                    <th className="p-3 font-bold text-slate-600">Nộp lúc</th>
-                    <th className="p-3 text-center font-bold text-slate-600">Thoát màn hình</th>
-                </tr>
-            </thead>
-            <tbody>
-                {studentAttempts.map(attempt => {
-                    const student = users.find(u => u.id === attempt.studentId);
-                    return (
-                        <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
-                            <td className="p-3 font-semibold text-slate-800">{student?.name || 'Không rõ'}</td>
-                            <td className="p-3 text-slate-600">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
-                            <td className="p-3 text-slate-600">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
-                            <td className="p-3 text-center font-bold text-red-600">
-                                <div className="flex items-center justify-center gap-1">
-                                    <EyeOffIcon />
-                                    <span>{attempt.fullscreenExits.length}</span>
-                                </div>
-                            </td>
-                        </tr>
-                    );
-                })}
-            </tbody>
-         </table>
+  const MonitoringTab: React.FC = () => {
+    const getHiddenCount = (attempt: ExamAttempt) => {
+        return attempt.visibilityStateChanges?.filter(c => c.state === 'hidden').length || 0;
+    }
+
+    return (
+        <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
+        <div className="overflow-x-auto">
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b-2 border-slate-200">
+                        <th className="p-3 font-bold text-slate-600">Học sinh</th>
+                        <th className="p-3 font-bold text-slate-600">Bắt đầu lúc</th>
+                        <th className="p-3 font-bold text-slate-600">Nộp lúc</th>
+                        <th className="p-3 text-center font-bold text-slate-600">Thoát toàn màn hình</th>
+                        <th className="p-3 text-center font-bold text-slate-600">Mất tập trung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {studentAttempts.map(attempt => {
+                        const student = users.find(u => u.id === attempt.studentId);
+                        const hiddenCount = getHiddenCount(attempt);
+                        return (
+                            <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
+                                <td className="p-3 font-semibold text-slate-800">{student?.name || 'Không rõ'}</td>
+                                <td className="p-3 text-slate-600">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
+                                <td className="p-3 text-slate-600">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
+                                <td className="p-3 text-center font-bold text-orange-600">
+                                    <div className="flex items-center justify-center gap-1">
+                                        <EyeOffIcon />
+                                        <span>{attempt.fullscreenExits.length}</span>
+                                    </div>
+                                </td>
+                                <td className={`p-3 text-center font-bold ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                                    <div className="flex items-center justify-center gap-1">
+                                        <ExclamationIcon />
+                                        <span>{hiddenCount}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
         </div>
-         {studentAttempts.length === 0 && <p className="text-center py-8 text-slate-500">Chưa có học sinh nào làm bài thi này.</p>}
-     </div>
-  );
+        {studentAttempts.length === 0 && <p className="text-center py-8 text-slate-500">Chưa có học sinh nào làm bài thi này.</p>}
+        </div>
+    );
+  };
 
   return (
     <>
@@ -141,8 +167,8 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                {currentUser.role === 'student' && (
                   <div className="mt-6 pt-6 border-t border-slate-200">
                       {(() => {
-                          if (userAttempt) {
-                              if (userAttempt.submittedAt) {
+                          if (userAttemptForThisExam) {
+                              if (userAttemptForThisExam.submittedAt) {
                                   return <div className="text-center p-4 bg-green-50 text-green-800 rounded-lg font-semibold">Bạn đã hoàn thành bài thi này.</div>;
                               }
                               if (isExamOngoing) {
@@ -156,23 +182,35 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                                   );
                               }
                               return <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">Kỳ thi đã kết thúc. Bạn đã không nộp bài kịp thời.</div>;
-                          } else {
-                              if (isExamOngoing) {
-                                  return (
-                                      <button
-                                          onClick={handleStartExamClick}
-                                          className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                      >
-                                          Vào thi
-                                      </button>
-                                  );
-                              }
+                          }
+                          
+                          if (otherOngoingExam) {
                               return (
-                                  <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">
-                                      {now < exam.startTime ? 'Kỳ thi chưa bắt đầu.' : 'Kỳ thi đã kết thúc.'}
-                                  </div>
+                                <div className="text-center p-4 bg-orange-50 text-orange-800 rounded-lg font-semibold">
+                                  Bạn đang có một bài thi khác đang làm: "{otherOngoingExam.title}".
+                                  <br/>
+                                  Vui lòng hoàn thành hoặc thoát bài thi đó trước.
+                                </div>
                               );
                           }
+                          
+                          if (isExamOngoing) {
+                              return (
+                                  <button
+                                      onClick={handleStartExamClick}
+                                      className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                  >
+                                      Vào thi
+                                  </button>
+                              );
+                          }
+
+                          return (
+                              <div className="text-center p-4 bg-slate-100 text-slate-600 rounded-lg font-semibold">
+                                  {now < exam.startTime ? 'Kỳ thi chưa bắt đầu.' : 'Kỳ thi đã kết thúc.'}
+                              </div>
+                          );
+
                       })()}
                   </div>
               )}

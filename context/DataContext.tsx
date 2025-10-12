@@ -140,7 +140,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const startExamAttempt = (examId: string): ExamAttempt | null => {
         if (!currentUser) return null;
         const newAttempt: ExamAttempt = {
-            id: crypto.randomUUID(), examId: examId, studentId: currentUser.id, startedAt: Date.now(), fullscreenExits: [], submissionIds: [],
+            id: crypto.randomUUID(),
+            examId: examId,
+            studentId: currentUser.id,
+            startedAt: Date.now(),
+            fullscreenExits: [],
+            visibilityStateChanges: [], // Initialize new field
+            submissionIds: [],
         };
         setExamAttempts(prevAttempts => {
             const updatedAttempts = [...prevAttempts, newAttempt];

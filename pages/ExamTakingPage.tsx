@@ -30,6 +30,7 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
   const [answers, setAnswers] = useState<AnswersState>(getInitialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const attemptRef = useRef(attempt); // Use ref to keep track of the latest attempt state in callbacks
 
   useEffect(() => {
@@ -211,7 +212,7 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
                     Thoát
                 </button>
                 <button
-                    onClick={handleSubmitExam}
+                    onClick={() => setIsSubmitModalOpen(true)}
                     className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors"
                 >
                     Nộp bài và kết thúc
@@ -226,6 +227,15 @@ const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ exam, problems, attempt
             message="Tiến trình của bạn đã được lưu. Bạn có thể quay lại làm bài thi sau, miễn là vẫn còn thời gian."
             confirmButtonText="Xác nhận"
             confirmButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
+        <ConfirmationModal
+            isOpen={isSubmitModalOpen}
+            onClose={() => setIsSubmitModalOpen(false)}
+            onConfirm={handleSubmitExam}
+            title="Xác nhận nộp bài"
+            message="Bạn có chắc chắn muốn nộp bài và kết thúc bài thi không? Hành động này không thể hoàn tác."
+            confirmButtonText="Nộp bài"
+            confirmButtonClass="bg-green-600 hover:bg-green-700"
         />
     </>
   );

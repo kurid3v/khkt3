@@ -166,6 +166,7 @@ const App: React.FC = () => {
                 studentId: currentUser.id,
                 startedAt: Date.now(),
                 fullscreenExits: [],
+                visibilityStateChanges: [], // Initialize new field
                 submissionIds: [],
             };
             const updatedAttempts = [...examAttempts, newAttempt];
@@ -340,6 +341,7 @@ const App: React.FC = () => {
                     problems={examProblems}
                     user={currentUser}
                     users={users}
+                    exams={exams}
                     examAttempts={examAttempts}
                     onBack={() => setPageState({ name: 'exams_dashboard' })}
                     onCreateProblemInExam={() => setPageState({ name: 'create_problem', examId: exam.id })}

@@ -44,6 +44,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     const [answers, setAnswers] = useState<AnswersState>(getInitialAnswers);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+    const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
     const attemptRef = useRef(attempt);
 
     useEffect(() => {
@@ -79,10 +80,12 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     const handleAnswerChange = (problemId: string, text: string) => {
         setAnswers(prev => ({ ...prev, [problemId]: text }));
     };
-
+    
+    // --- Anti-Cheating Listeners ---
     const handleFullscreenChange = useCallback(() => {
-        setIsFullscreenActive(!!document.fullscreenElement);
-        if (!document.fullscreenElement && attemptRef.current) {
+        const isFullscreen = !!document.fullscreenElement;
+        setIsFullscreenActive(isFullscreen);
+        if (!isFullscreen && attemptRef.current) {
             const updatedAttempt: ExamAttempt = {
                 ...attemptRef.current,
                 fullscreenExits: [...attemptRef.current.fullscreenExits, Date.now()],
@@ -91,16 +94,33 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         }
     }, [updateExamAttempt]);
 
+    const handleVisibilityChange = useCallback(() => {
+        if (document.visibilityState === 'hidden' && attemptRef.current) {
+            const updatedAttempt: ExamAttempt = {
+                ...attemptRef.current,
+                visibilityStateChanges: [
+                    ...(attemptRef.current.visibilityStateChanges || []),
+                    { timestamp: Date.now(), state: 'hidden' }
+                ],
+            };
+            updateExamAttempt(updatedAttempt);
+        }
+    }, [updateExamAttempt]);
+    
     useEffect(() => {
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             }
         };
-    }, [handleFullscreenChange]);
+    }, [handleFullscreenChange, handleVisibilityChange]);
+    // --- End Anti-Cheating ---
+
 
     const enterFullscreen = () => {
         document.documentElement.requestFullscreen().catch(err => {
@@ -170,7 +190,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         return (
             <div className="fixed inset-0 bg-slate-900 text-white flex flex-col items-center justify-center text-center p-4 z-50">
                 <h1 className="text-4xl font-bold">Chế độ toàn màn hình là bắt buộc</h1>
-                <p className="text-xl mt-4 max-w-2xl">Để đảm bảo tính toàn vẹn của kỳ thi, bạn phải làm bài ở chế độ toàn màn hình. Mọi hành vi thoát khỏi chế độ toàn màn hình sẽ được ghi lại.</p>
+                <p className="text-xl mt-4 max-w-2xl">Để đảm bảo tính toàn vẹn của kỳ thi, bạn phải làm bài ở chế độ toàn màn hình. Mọi hành vi thoát khỏi chế độ toàn màn hình hoặc chuyển sang cửa sổ khác sẽ được ghi lại.</p>
                 <button
                     onClick={enterFullscreen}
                     className="mt-8 px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
@@ -258,7 +278,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                         Thoát
                     </button>
                     <button
-                        onClick={handleSubmitExam}
+                        onClick={() => setIsSubmitModalOpen(true)}
                         className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors"
                     >
                         Nộp bài và kết thúc
@@ -273,6 +293,15 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                 message="Tiến trình của bạn đã được lưu. Bạn có thể quay lại làm bài thi sau, miễn là vẫn còn thời gian."
                 confirmButtonText="Xác nhận"
                 confirmButtonClass="bg-yellow-600 hover:bg-yellow-700"
+            />
+            <ConfirmationModal
+                isOpen={isSubmitModalOpen}
+                onClose={() => setIsSubmitModalOpen(false)}
+                onConfirm={handleSubmitExam}
+                title="Xác nhận nộp bài"
+                message="Bạn có chắc chắn muốn nộp bài và kết thúc bài thi không? Hành động này không thể hoàn tác."
+                confirmButtonText="Nộp bài"
+                confirmButtonClass="bg-green-600 hover:bg-green-700"
             />
         </>
     );

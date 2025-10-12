@@ -46,6 +46,8 @@ export interface ExamAttempt {
   startedAt: number;
   submittedAt?: number;
   fullscreenExits: number[]; // Array of timestamps when user exited fullscreen
+  // Add a new field to track when the user navigates away from the tab
+  visibilityStateChanges: { timestamp: number, state: 'visible' | 'hidden' }[];
   submissionIds: string[];
 }
 
