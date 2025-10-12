@@ -70,9 +70,6 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
   );
 
   const MonitoringTab: React.FC = () => {
-    const getHiddenCount = (attempt: ExamAttempt) => {
-        return attempt.visibilityStateChanges?.filter(c => c.state === 'hidden').length || 0;
-    }
     return (
      <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
        <div className="overflow-x-auto">
@@ -89,20 +86,36 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
             <tbody>
                 {studentAttempts.map(attempt => {
                     const student = users.find(u => u.id === attempt.studentId);
-                    const hiddenCount = getHiddenCount(attempt);
+                    
+                    const fullscreenExitTimestamps = attempt.fullscreenExits
+                        .map((ts, index) => `Lần ${index + 1}: ${new Date(ts).toLocaleTimeString('vi-VN')}`)
+                        .join('\n');
+
+                    const hiddenEvents = attempt.visibilityStateChanges?.filter(c => c.state === 'hidden') || [];
+                    const hiddenTimestamps = hiddenEvents
+                        .map((event, index) => `Lần ${index + 1}: ${new Date(event.timestamp).toLocaleTimeString('vi-VN')}`)
+                        .join('\n');
+                    const hiddenCount = hiddenEvents.length;
+
                     return (
                         <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
                             <td className="p-3 font-semibold text-slate-800">{student?.name || 'Không rõ'}</td>
                             <td className="p-3 text-slate-600">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
                             <td className="p-3 text-slate-600">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
                             <td className="p-3 text-center font-bold text-orange-600">
-                                <div className="flex items-center justify-center gap-1">
+                                <div 
+                                    className="flex items-center justify-center gap-1 cursor-help"
+                                    title={fullscreenExitTimestamps || "Không có lần thoát nào"}
+                                >
                                     <EyeOffIcon />
                                     <span>{attempt.fullscreenExits.length}</span>
                                 </div>
                             </td>
                             <td className={`p-3 text-center font-bold ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
-                                <div className="flex items-center justify-center gap-1">
+                                <div 
+                                    className="flex items-center justify-center gap-1 cursor-help"
+                                    title={hiddenTimestamps || "Không có lần mất tập trung nào"}
+                                >
                                     <ExclamationIcon />
                                     <span>{hiddenCount}</span>
                                 </div>
