@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ứng dụng đã được nâng cấp lên Next.js</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+<script type="importmap">
+{
+  "imports": {
+    "next/": "https://aistudiocdn.com/next@^15.5.4/",
+    "next": "https://aistudiocdn.com/next@^15.5.4",
+    "tailwindcss": "https://aistudiocdn.com/tailwindcss@^4.1.14",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.24.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@tailwindcss/typography": "https://aistudiocdn.com/@tailwindcss/typography@^0.5.19"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen font-sans">
+    <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-lg mx-4">
+        <h1 class="text-3xl font-bold text-slate-800 mb-4">Nâng cấp hoàn tất!</h1>
+        <p class="text-slate-600">
+            Ứng dụng của bạn đã được chuyển đổi thành công sang Next.js.
+        </p>
+        <p class="mt-6 text-lg">
+            Để khởi chạy ứng dụng, vui lòng chạy các lệnh sau trong terminal của bạn:
+        </p>
+        <pre class="bg-slate-800 text-white rounded-md p-4 mt-2 text-left text-sm sm:text-base"><code>npm install
+npm run dev</code></pre>
+        <p class="mt-4 text-slate-600">
+            Sau đó, mở trình duyệt và truy cập <a href="http://localhost:3000" class="text-blue-600 font-semibold underline">http://localhost:3000</a>
+        </p>
+        <p class="mt-8 text-sm text-slate-500">
+            (Tệp <code>index.html</code> này không còn được sử dụng nữa và có thể được xóa.)
+        </p>
+    </div>
+</body>
+</html>
