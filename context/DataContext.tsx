@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
@@ -21,9 +22,10 @@ interface DataContextType {
     addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => void;
     deleteExam: (examId: string) => void;
     startExamAttempt: (examId: string) => ExamAttempt | null;
-    updateExamAttempt: (updatedAttempt: ExamAttempt) => void;
     finishExamAttempt: (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => void;
     updateUserRole: (userId: string, role: 'student' | 'teacher' | 'admin') => void;
+    recordFullscreenExit: (attemptId: string) => void;
+    recordVisibilityChange: (attemptId: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -156,9 +158,37 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return newAttempt;
     };
 
-    const updateExamAttempt = (updatedAttempt: ExamAttempt) => {
+    const recordFullscreenExit = (attemptId: string) => {
         setExamAttempts(prevAttempts => {
-            const updatedAttempts = prevAttempts.map(att => att.id === updatedAttempt.id ? updatedAttempt : att);
+            const updatedAttempts = prevAttempts.map(att => {
+                if (att.id === attemptId) {
+                    return {
+                        ...att,
+                        fullscreenExits: [...att.fullscreenExits, Date.now()],
+                    };
+                }
+                return att;
+            });
+            saveExamAttempts(updatedAttempts);
+            return updatedAttempts;
+        });
+    };
+    
+    const recordVisibilityChange = (attemptId: string) => {
+        setExamAttempts(prevAttempts => {
+            const updatedAttempts = prevAttempts.map(att => {
+                if (att.id === attemptId) {
+                    const previousChanges = att.visibilityStateChanges || [];
+                    return {
+                        ...att,
+                        visibilityStateChanges: [
+                            ...previousChanges,
+                            { timestamp: Date.now(), state: 'hidden' as const }
+                        ],
+                    };
+                }
+                return att;
+            });
             saveExamAttempts(updatedAttempts);
             return updatedAttempts;
         });
@@ -189,7 +219,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const value: DataContextType = {
         users, problems, submissions, exams, examAttempts, currentUser, isLoading,
         login, signUp, logout, addProblem, updateProblem, addSubmission, addExam, deleteExam,
-        startExamAttempt, updateExamAttempt, finishExamAttempt, updateUserRole,
+        startExamAttempt, finishExamAttempt, updateUserRole,
+        recordFullscreenExit, recordVisibilityChange,
     };
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

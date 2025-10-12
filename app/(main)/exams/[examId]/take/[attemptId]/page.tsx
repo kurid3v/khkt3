@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,7 +13,7 @@ type AnswersState = { [problemId: string]: string };
 
 export default function ExamTakingPage({ params }: { params: { examId: string; attemptId: string } }) {
     const router = useRouter();
-    const { exams, problems, examAttempts: attemptsFromContext, currentUser, updateExamAttempt, finishExamAttempt } = useDataContext();
+    const { exams, problems, examAttempts: attemptsFromContext, currentUser, recordFullscreenExit, recordVisibilityChange, finishExamAttempt } = useDataContext();
 
     // RACE CONDITION FIX: Find attempt from context first. If not found, fallback to localStorage.
     let attempt = attemptsFromContext.find(a => a.id === params.attemptId);
@@ -86,26 +87,15 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         const isFullscreen = !!document.fullscreenElement;
         setIsFullscreenActive(isFullscreen);
         if (!isFullscreen && attemptRef.current) {
-            const updatedAttempt: ExamAttempt = {
-                ...attemptRef.current,
-                fullscreenExits: [...attemptRef.current.fullscreenExits, Date.now()],
-            };
-            updateExamAttempt(updatedAttempt);
+            recordFullscreenExit(attemptRef.current.id);
         }
-    }, [updateExamAttempt]);
+    }, [recordFullscreenExit]);
 
     const handleVisibilityChange = useCallback(() => {
         if (document.visibilityState === 'hidden' && attemptRef.current) {
-            const updatedAttempt: ExamAttempt = {
-                ...attemptRef.current,
-                visibilityStateChanges: [
-                    ...(attemptRef.current.visibilityStateChanges || []),
-                    { timestamp: Date.now(), state: 'hidden' }
-                ],
-            };
-            updateExamAttempt(updatedAttempt);
+            recordVisibilityChange(attemptRef.current.id);
         }
-    }, [updateExamAttempt]);
+    }, [recordVisibilityChange]);
     
     useEffect(() => {
         document.addEventListener('fullscreenchange', handleFullscreenChange);
