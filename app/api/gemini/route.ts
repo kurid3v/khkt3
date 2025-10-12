@@ -111,7 +111,7 @@ async function gradeEssayOnServer(prompt: string, essay: string, rubric: RubricI
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema,
-        temperature: 0.2,
+        temperature: 0,
       },
     });
 
@@ -140,7 +140,7 @@ async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricIt
         systemInstruction: rubricParsingSystemInstruction,
         responseMimeType: "application/json",
         responseSchema: rubricParsingSchema,
-        temperature: 0.1,
+        temperature: 0,
       },
     });
 
