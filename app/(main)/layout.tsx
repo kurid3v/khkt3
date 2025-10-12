@@ -25,7 +25,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
   
   // Do not show header on the exam taking page
-  const isTakingExam = /^\/exams\/.*\/take\//.test(pathname);
+  const isTakingExam = /^\/exams\/.*\/take\//.test(pathname || '');
 
   return (
      <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
