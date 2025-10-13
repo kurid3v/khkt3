@@ -1,18 +1,18 @@
 import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
-import { fontFamily } from "tailwindcss/defaultTheme";
+// FIX: Changed to a default import for tailwind's default theme as `fontFamily` is not a named export.
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", ...fontFamily.sans],
-        heading: ["var(--font-plus-jakarta-sans)", ...fontFamily.sans],
+        sans: ["var(--font-inter)", ...defaultTheme.fontFamily.sans],
+        heading: ["var(--font-plus-jakarta-sans)", ...defaultTheme.fontFamily.sans],
       },
       colors: {
         border: "hsl(var(--border))",
