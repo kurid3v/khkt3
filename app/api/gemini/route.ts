@@ -9,6 +9,33 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+/**
+ * Extracts a JSON object or array from a string, ignoring surrounding text.
+ * @param text The string potentially containing JSON.
+ * @returns The extracted JSON string, or null if not found.
+ */
+function extractJson(text: string | undefined): string | null {
+    if (!text) return null;
+    const trimmedText = text.trim();
+
+    // Attempt to find object-based JSON (e.g., { ... })
+    let firstBracket = trimmedText.indexOf('{');
+    let lastBracket = trimmedText.lastIndexOf('}');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        return trimmedText.substring(firstBracket, lastBracket + 1);
+    }
+
+    // Attempt to find array-based JSON (e.g., [ ... ])
+    firstBracket = trimmedText.indexOf('[');
+    lastBracket = trimmedText.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        return trimmedText.substring(firstBracket, lastBracket + 1);
+    }
+
+    return null; // Return null if no valid JSON structure is found
+}
+
+
 const responseSchema = {
   type: Type.OBJECT,
   properties: {
@@ -43,14 +70,12 @@ const responseSchema = {
 };
 
 const systemInstruction = `Bạn là một giáo viên dạy văn có kinh nghiệm và công tâm ở Việt Nam.
-Nhiệm vụ của bạn là đọc kỹ đề bài, bài làm và hướng dẫn chấm được cung cấp.
+Nhiệm vụ của bạn là đọc kỹ đề bài, bài làm và hướng dẫn chấm được cung cấp, sau đó đưa ra nhận xét chi tiết và cho điểm.
 
-- **ƯU TIÊN SỐ 1: Nếu có "HƯỚNG DẪN CHẤM CHI TIẾT"**: Bạn BẮT BUỘC phải tuân thủ nghiêm ngặt và tuyệt đối theo hướng dẫn này. Phân tích bài làm dựa trên từng luận điểm, yêu cầu, và thang điểm được nêu trong đó. Các tiêu chí và điểm số phải được trích xuất và áp dụng chính xác từ hướng dẫn.
-- **ƯU TIÊN SỐ 2: Nếu có "biểu điểm" dạng danh sách tiêu chí**: Hãy cho điểm và viết nhận xét chi tiết cho TỪNG tiêu chí. Tổng điểm là tổng điểm của các tiêu chí. Đánh giá phải bám sát vào yêu cầu của từng tiêu chí.
-- **Nếu không có cả hai**: Hãy đánh giá bài văn một cách tổng quát về các mặt: nội dung, cấu trúc, diễn đạt, ngữ pháp và cho điểm trên thang điểm được yêu cầu.
-
-Phản hồi của bạn phải mang tính xây dựng, giúp học sinh hiểu rõ điểm mạnh, điểm yếu và cách cải thiện bài viết.
-Hãy trả về kết quả dưới dạng JSON theo schema đã định sẵn.`;
+- **Tuân thủ Hướng dẫn chấm**: Luôn tuân thủ nghiêm ngặt hướng dẫn chấm và biểu điểm được cung cấp. Phân tích bài làm dựa trên từng luận điểm, yêu cầu và thang điểm đã cho.
+- **Quy đổi điểm**: Sau khi chấm, hãy đảm bảo tổng điểm cuối cùng được quy đổi chính xác về thang điểm yêu cầu trong phần "QUAN TRỌNG" của đề bài.
+- **Phản hồi xây dựng**: Phản hồi của bạn phải mang tính xây dựng, giúp học sinh hiểu rõ điểm mạnh, điểm yếu và cách cải thiện bài viết.
+- **Định dạng JSON**: Luôn trả về kết quả dưới dạng JSON theo schema đã định sẵn. Không thêm bất kỳ văn bản giải thích nào bên ngoài đối tượng JSON.`;
 
 
 const rubricParsingSchema = {
@@ -116,9 +141,9 @@ async function gradeEssayOnServer(prompt: string, essay: string, rubric: RubricI
       },
     });
 
-    const jsonText = response.text?.trim();
+    const jsonText = extractJson(response.text);
     if (!jsonText) {
-      throw new Error("AI response was empty or invalid.");
+      throw new Error("AI response was empty or did not contain valid JSON.");
     }
     const parsedResponse: Feedback = JSON.parse(jsonText);
     
@@ -148,7 +173,7 @@ async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricIt
       },
     });
 
-    const jsonText = response.text?.trim();
+    const jsonText = extractJson(response.text);
     if (!jsonText) {
       throw new Error("AI rubric parsing response was empty or invalid.");
     }
