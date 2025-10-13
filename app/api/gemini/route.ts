@@ -115,7 +115,10 @@ async function gradeEssayOnServer(prompt: string, essay: string, rubric: RubricI
       },
     });
 
-    const jsonText = response.text.trim();
+    const jsonText = response.text?.trim();
+    if (!jsonText) {
+      throw new Error("AI response was empty or invalid.");
+    }
     const parsedResponse: Feedback = JSON.parse(jsonText);
     
     if (
@@ -144,7 +147,10 @@ async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricIt
       },
     });
 
-    const jsonText = response.text.trim();
+    const jsonText = response.text?.trim();
+    if (!jsonText) {
+      throw new Error("AI rubric parsing response was empty or invalid.");
+    }
     const parsedResponse: Omit<RubricItem, 'id'>[] = JSON.parse(jsonText);
     
     if (!Array.isArray(parsedResponse)) {
