@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Feedback, RubricItem } from '@/types';
+import type { Feedback, RubricItem, Problem, Answer, Question } from '@/types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set on the server");
@@ -20,8 +20,8 @@ function extractJson(text: string | undefined): string | null {
 
     // First, try to find JSON within markdown code fences as it's the most reliable format.
     const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (markdownMatch && markdownMatch[2]) {
-        return markdownMatch[2].trim();
+    if (markdownMatch && markdownMatch[1]) {
+        return markdownMatch[1].trim();
     }
 
     // If no markdown fence is found, locate the first opening brace or bracket.
@@ -46,10 +46,19 @@ function extractJson(text: string | undefined): string | null {
 
     // Traverse the string to find the matching closing character.
     let depth = 0;
+    let inString = false;
     for (let i = firstOpenIndex; i < text.length; i++) {
-        if (text[i] === openChar) {
+        const char = text[i];
+
+        if (char === '"' && text[i - 1] !== '\\') {
+            inString = !inString;
+        }
+
+        if (inString) continue;
+
+        if (char === openChar) {
             depth++;
-        } else if (text[i] === closeChar) {
+        } else if (char === closeChar) {
             depth--;
         }
 
@@ -61,8 +70,7 @@ function extractJson(text: string | undefined): string | null {
                 JSON.parse(potentialJson);
                 return potentialJson;
             } catch {
-                // If parsing fails, the structure is invalid, so we return null.
-                return null;
+                // If parsing fails, the structure is invalid, so we continue searching.
             }
         }
     }
@@ -221,6 +229,102 @@ async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricIt
     return parsedResponse;
 }
 
+const explanationSystemInstruction = `Bạn là một giáo viên giỏi, chuyên giải thích các câu hỏi đọc hiểu một cách ngắn gọn, dễ hiểu. Nhiệm vụ của bạn là đọc một đoạn văn, một câu hỏi, và câu trả lời đúng, sau đó đưa ra lời giải thích súc tích tại sao đáp án đó lại đúng dựa vào nội dung trong đoạn văn.`;
+
+const explanationSchema = {
+    type: Type.OBJECT,
+    properties: {
+        explanations: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    questionId: { type: Type.STRING },
+                    explanation: { type: Type.STRING }
+                },
+                required: ["questionId", "explanation"]
+            }
+        }
+    },
+    required: ["explanations"]
+};
+
+async function getExplanationsForQuestions(passage: string, questions: Question[]): Promise<Map<string, string>> {
+    const questionsToExplain = questions.map(q => {
+        const correctOption = q.options.find(o => o.id === q.correctOptionId);
+        return {
+            questionId: q.id,
+            questionText: q.questionText,
+            correctAnswerText: correctOption?.text || "Không rõ"
+        };
+    });
+
+    const content = `
+        Dựa vào đoạn văn dưới đây, hãy giải thích ngắn gọn tại sao các câu trả lời cho từng câu hỏi sau lại đúng.
+
+        **Đoạn văn:**
+        """
+        ${passage}
+        """
+
+        **Câu hỏi và câu trả lời đúng:**
+        ${JSON.stringify(questionsToExplain, null, 2)}
+    `.trim();
+
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: content,
+        config: {
+            systemInstruction: explanationSystemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: explanationSchema,
+            temperature: 0.2,
+        }
+    });
+
+    const jsonText = extractJson(response.text);
+    if (!jsonText) {
+        throw new Error("AI explanation response was invalid.");
+    }
+    
+    const parsed = JSON.parse(jsonText) as { explanations: { questionId: string, explanation: string }[] };
+    const explanationMap = new Map<string, string>();
+    parsed.explanations.forEach(item => {
+        explanationMap.set(item.questionId, item.explanation);
+    });
+    return explanationMap;
+}
+
+
+async function gradeReadingComprehensionOnServer(problem: Problem, answers: Answer[]): Promise<Feedback> {
+    const questions = problem.questions || [];
+    const passage = problem.passage || "";
+    let totalScore = 0;
+
+    const explanations = await getExplanationsForQuestions(passage, questions);
+
+    const detailedFeedback = questions.map(question => {
+        const studentAnswer = answers.find(a => a.questionId === question.id);
+        const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
+        const score = isCorrect ? 1 : 0;
+        if (isCorrect) {
+            totalScore++;
+        }
+        return {
+            criterion: question.questionText,
+            score: score,
+            feedback: explanations.get(question.id) || "Không có giải thích."
+        };
+    });
+
+    return {
+        detailedFeedback,
+        totalScore,
+        maxScore: questions.length,
+        generalSuggestions: [],
+    };
+}
+
 
 export async function POST(request: Request) {
   try {
@@ -231,6 +335,12 @@ export async function POST(request: Request) {
       const { prompt, essay, rubric, rawRubric, customMaxScore } = payload;
       const feedback = await gradeEssayOnServer(prompt, essay, rubric, rawRubric, customMaxScore);
       return NextResponse.json(feedback);
+    }
+    
+    if (action === 'grade_reading_comprehension') {
+        const { problem, answers } = payload;
+        const feedback = await gradeReadingComprehensionOnServer(problem, answers);
+        return NextResponse.json(feedback);
     }
 
     if (action === 'parseRubric') {

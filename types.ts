@@ -5,27 +5,59 @@ export interface User {
   password: string;
 }
 
+// NEW: Add Question and Option types for reading comprehension
+export interface Option {
+  id: string;
+  text: string;
+}
+
+export interface Question {
+  id: string;
+  questionText: string;
+  options: Option[];
+  correctOptionId: string;
+}
+
 export interface Problem {
   id: string;
   title: string;
-  prompt: string;
-  rawRubric?: string;
-  rubricItems?: RubricItem[];
-  customMaxScore?: number;
   createdBy: string; // userId of teacher
   createdAt: number;
   examId?: string; // ID of the exam this problem belongs to
+
+  // NEW: Differentiate between problem types
+  type: 'essay' | 'reading_comprehension';
+
+  // Essay-specific fields
+  prompt?: string;
+  rawRubric?: string;
+  rubricItems?: RubricItem[];
+  customMaxScore?: number;
   isRubricHidden?: boolean;
+
+  // Reading comprehension-specific fields
+  passage?: string;
+  questions?: Question[];
 }
+
+// NEW: Add Answer type for reading comprehension submissions
+export interface Answer {
+  questionId: string;
+  selectedOptionId: string;
+}
+
 
 export interface Submission {
   id: string;
   problemId: string;
   submitterId: string;
-  essay: string;
   feedback: Feedback;
   submittedAt: number;
   examId?: string; // ID of the exam this submission belongs to
+  
+  // Fields for different submission types
+  essay?: string; // For 'essay' type
+  answers?: Answer[]; // For 'reading_comprehension' type
 }
 
 export interface Exam {
@@ -60,9 +92,9 @@ export interface RubricItem {
 }
 
 export interface DetailedFeedbackItem {
-  criterion: string;
-  score: number;
-  feedback: string;
+  criterion: string; // For essays, the criterion name. For reading comp, the question text.
+  score: number; // For essays, the score. For reading comp, 1 for correct, 0 for incorrect.
+  feedback: string; // For essays, detailed feedback. For reading comp, explanation of the correct answer.
 }
 
 export interface Feedback {

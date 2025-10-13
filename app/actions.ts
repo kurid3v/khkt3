@@ -3,21 +3,47 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import type { Problem, Submission, Exam, ExamAttempt, RubricItem } from '@/types';
+import type { Problem, Submission, Exam, ExamAttempt, RubricItem, Question } from '@/types';
 
 // --- Problems ---
 export async function createProblem(data: {
   title: string;
-  prompt: string;
+  createdBy: string;
+  type: 'essay' | 'reading_comprehension';
+  // essay fields
+  prompt?: string;
   rawRubric?: string;
   rubricItems?: RubricItem[];
   customMaxScore?: number;
   isRubricHidden?: boolean;
-  createdBy: string;
+  // reading comprehension fields
+  passage?: string;
+  questions?: Question[];
+  // common fields
   examId?: string;
 }) {
   try {
-    db.problems.create(data);
+    // Ensure only relevant data for the type is passed
+    const problemData = {
+        title: data.title,
+        createdBy: data.createdBy,
+        type: data.type,
+        examId: data.examId,
+        ...(data.type === 'essay' ? {
+            prompt: data.prompt,
+            rawRubric: data.rawRubric,
+            rubricItems: data.rubricItems,
+            customMaxScore: data.customMaxScore,
+            isRubricHidden: data.isRubricHidden,
+        } : {
+            passage: data.passage,
+            questions: data.questions,
+            // Reading comprehension score is based on number of questions
+            customMaxScore: data.questions?.length || 0,
+        })
+    };
+
+    db.problems.create(problemData);
     revalidatePath('/dashboard');
     if (data.examId) {
       revalidatePath(`/exams/${data.examId}`);
@@ -27,6 +53,7 @@ export async function createProblem(data: {
     throw new Error("Không thể tạo bài tập.");
   }
 }
+
 
 // --- Exams ---
 export async function createExam(data: {

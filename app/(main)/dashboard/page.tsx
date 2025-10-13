@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
 import BookOpenIcon from '@/components/icons/BookOpenIcon';
+import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
 
-// FIX: Refactored ProblemCard to ProblemCardContent to resolve a TypeScript error with the `key` prop.
-// The component now renders only the inner content, and the Link component with the key is used directly in the `map` function.
 interface ProblemCardContentProps {
     problem: Problem;
 }
@@ -17,10 +16,15 @@ function ProblemCardContent({ problem }: ProblemCardContentProps) {
         <div className="flex items-start justify-between">
             <h3 className="text-lg font-bold text-foreground pr-4">{problem.title}</h3>
             <div className="p-2 bg-secondary rounded-md">
-                <BookOpenIcon className="w-5 h-5 text-primary"/>
+                {problem.type === 'reading_comprehension'
+                    ? <ClipboardListIcon className="w-5 h-5 text-primary"/>
+                    : <BookOpenIcon className="w-5 h-5 text-primary"/>
+                }
             </div>
         </div>
-        <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{problem.prompt}</p>
+        <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">
+            {problem.type === 'reading_comprehension' ? problem.passage : problem.prompt}
+        </p>
         <div className="text-right mt-4 text-sm font-semibold text-primary">
             <span className="inline-block group-hover:translate-x-1 motion-reduce:transform-none">
                 Xem chi tiết &rarr;

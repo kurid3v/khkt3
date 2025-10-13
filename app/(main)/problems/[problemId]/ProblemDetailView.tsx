@@ -1,12 +1,12 @@
-
 'use client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Problem, Submission, User } from '@/types';
+import type { Problem, Submission, User, Answer } from '@/types';
 import Leaderboard from '@/components/Leaderboard';
 import StudentGraderView from '@/components/StudentGraderView';
+import ReadingComprehensionSolver from './ReadingComprehensionSolver'; // New component
 import { useDataContext } from '@/context/DataContext';
 
 interface ProblemDetailViewProps {
@@ -18,7 +18,7 @@ interface ProblemDetailViewProps {
 }
 
 // Teacher/Admin view of submissions for this problem
-const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<User, 'password'>[] }> = ({ submissions, users }) => {
+const TeacherSubmissionsView: React.FC<{ problem: Problem, submissions: Submission[], users: Omit<User, 'password'>[] }> = ({ problem, submissions, users }) => {
     const router = useRouter();
 
     if (submissions.length === 0) {
@@ -43,11 +43,15 @@ const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<
                     <tbody>
                         {submissions.map(sub => {
                             const submitter = users.find(u => u.id === sub.submitterId);
+                            const maxScore = sub.feedback.maxScore > 0 ? sub.feedback.maxScore : 1;
+                            const displayScore = problem.type === 'reading_comprehension' 
+                                ? `${sub.feedback.totalScore}/${maxScore}`
+                                : sub.feedback.totalScore.toFixed(2);
                             return (
                                 <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className="cursor-pointer hover:bg-muted/50 border-b border-border last:border-b-0">
                                     <td className="p-3 font-semibold text-foreground">{submitter?.name || 'Không rõ'}</td>
                                     <td className="p-3 text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</td>
-                                    <td className="p-3 font-bold text-primary text-right">{sub.feedback.totalScore.toFixed(2)}</td>
+                                    <td className="p-3 font-bold text-primary text-right">{displayScore}</td>
                                 </tr>
                             )
                         })}
@@ -64,17 +68,15 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
     const { addSubmissionAndSyncState } = useDataContext();
     
     if (!currentUser) {
-        // This case should be handled by the main layout's auth guard
         return null;
     }
 
     const userSubmissions = problemSubmissions.filter(s => s.submitterId === currentUser.id);
 
-    const handleSubmissionComplete = async (newSubmissionData: Omit<Submission, 'id' | 'submittedAt'>) => {
+    const handleEssaySubmission = async (newSubmissionData: Omit<Submission, 'id' | 'submittedAt'>) => {
         try {
             const newSubmission = await addSubmissionAndSyncState(newSubmissionData);
             if (newSubmission && !newSubmission.examId) {
-                // Navigate to the result page for immediate feedback
                 router.push(`/submissions/${newSubmission.id}`);
             }
         } catch (error) {
@@ -82,8 +84,24 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
         }
     };
     
+    const handleReadingCompSubmission = async (answers: Answer[]) => {
+        // The solver component will handle the grading and return the full submission data
+    };
+
     const backPath = problem.examId ? `/exams/${problem.examId}` : '/dashboard';
     const backButtonText = problem.examId ? 'Quay lại đề thi' : 'Quay lại danh sách';
+    
+    const renderProblemContent = () => {
+        if (problem.type === 'reading_comprehension') {
+            return (
+                <div className="mt-4 text-foreground/90 whitespace-pre-wrap prose prose-slate max-w-none">
+                    <h3 className="font-semibold text-lg mb-2">Đoạn văn:</h3>
+                    <p>{problem.passage}</p>
+                </div>
+            );
+        }
+        return <div className="mt-4 text-foreground/90 whitespace-pre-wrap prose prose-slate max-w-none">{problem.prompt}</div>;
+    };
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -93,24 +111,22 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
             <header className="mb-10 p-6 bg-card rounded-xl shadow-sm border border-border">
                 <h1 className="text-3xl font-bold text-foreground">{problem.title}</h1>
                 <p className="text-muted-foreground mt-2">Giao bởi: {teacherName}</p>
-                <div className="mt-4 text-foreground/90 whitespace-pre-wrap prose prose-slate max-w-none">{problem.prompt}</div>
+                {renderProblemContent()}
             </header>
 
             <main>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left/Main Column */}
                     <div className="lg:col-span-2 space-y-8">
-                        {(currentUser.role !== 'student' || !problem.isRubricHidden) && (
+                       {/* Rubric/Instructions for Essay */}
+                       {problem.type === 'essay' && (currentUser.role !== 'student' || !problem.isRubricHidden) && (
                             <div>
                                 <h2 className="text-2xl font-bold text-foreground mb-4">Hướng dẫn chấm</h2>
                                 <div className="p-6 bg-card rounded-xl border border-border space-y-4">
                                     <div>
                                         <h4 className="font-semibold text-foreground">Thang điểm:</h4>
-                                        <p className="text-muted-foreground">
-                                            Bài làm sẽ được chấm và quy đổi về thang điểm <strong>{problem.customMaxScore || 10}</strong>.
-                                        </p>
+                                        <p className="text-muted-foreground">Bài làm sẽ được chấm và quy đổi về thang điểm <strong>{problem.customMaxScore || 10}</strong>.</p>
                                     </div>
-
                                     {(problem.rawRubric || (problem.rubricItems && problem.rubricItems.length > 0)) && (
                                         <div className="pt-4 border-t border-border">
                                             <h4 className="font-semibold text-foreground mb-2">Biểu điểm chi tiết:</h4>
@@ -118,16 +134,8 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                                                 <p className="text-muted-foreground whitespace-pre-wrap">{problem.rawRubric}</p>
                                             ) : problem.rubricItems && problem.rubricItems.length > 0 ? (
                                                 <>
-                                                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                                                        {problem.rubricItems.map(item => (
-                                                            <li key={item.id}>
-                                                                <strong>{item.criterion}:</strong> {item.maxScore} điểm
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                    <p className="text-right font-bold text-foreground mt-2">
-                                                        Tổng điểm biểu điểm: {problem.rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}
-                                                    </p>
+                                                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">{problem.rubricItems.map(item => (<li key={item.id}><strong>{item.criterion}:</strong> {item.maxScore} điểm</li>))}</ul>
+                                                    <p className="text-right font-bold text-foreground mt-2">Tổng điểm biểu điểm: {problem.rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}</p>
                                                 </>
                                             ) : null}
                                         </div>
@@ -136,10 +144,14 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                             </div>
                         )}
                         <div>
-                            <h2 className="text-2xl font-bold text-foreground mb-4">
-                                {currentUser.role === 'student' ? 'Nộp bài & Chấm thử' : 'Nộp bài / Chấm thử nghiệm'}
+                             <h2 className="text-2xl font-bold text-foreground mb-4">
+                                {currentUser.role === 'student' ? 'Làm bài' : 'Chấm thử nghiệm'}
                             </h2>
-                            <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={handleSubmissionComplete} />
+                            {problem.type === 'essay' ? (
+                                <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={handleEssaySubmission} />
+                            ) : (
+                                <ReadingComprehensionSolver problem={problem} user={currentUser} onSubmissionComplete={handleEssaySubmission} />
+                            )}
                         </div>
                     </div>
 
@@ -148,36 +160,34 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                         {currentUser.role === 'student' && (
                             <div>
                                 <h2 className="text-2xl font-bold text-foreground mb-4">Lịch sử nộp bài</h2>
-                                    {userSubmissions.length > 0 ? (
-                                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                        {userSubmissions.map(sub => (
-                                            <Link 
-                                                key={sub.id} 
-                                                href={`/submissions/${sub.id}`}
-                                                className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50"
-                                            >
+                                {userSubmissions.length > 0 ? (
+                                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {userSubmissions.map(sub => {
+                                        const displayScore = problem.type === 'reading_comprehension'
+                                            ? `${sub.feedback.totalScore}/${sub.feedback.maxScore}`
+                                            : `${sub.feedback.totalScore.toFixed(2)} điểm`;
+                                        return (
+                                            <Link key={sub.id} href={`/submissions/${sub.id}`} className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50">
                                                 <div className="flex justify-between items-center">
                                                     <p className="text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</p>
-                                                    <p className="font-bold text-lg text-primary">{sub.feedback.totalScore.toFixed(2)} điểm</p>
+                                                    <p className="font-bold text-lg text-primary">{displayScore}</p>
                                                 </div>
                                             </Link>
-                                        ))}
-                                    </div>
-                                    ) : (
-                                        <div className="bg-card p-6 rounded-lg border border-dashed text-center">
-                                        <p className="text-muted-foreground">Bạn chưa nộp bài nào.</p>
-                                    </div>
-                                    )}
+                                        )
+                                    })}
+                                </div>
+                                ) : (
+                                    <div className="bg-card p-6 rounded-lg border border-dashed text-center"><p className="text-muted-foreground">Bạn chưa nộp bài nào.</p></div>
+                                )}
                             </div>
                         )}
                         {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                             <div>
                                 <h2 className="text-2xl font-bold text-foreground mb-4">Danh sách bài nộp</h2>
-                                <TeacherSubmissionsView submissions={problemSubmissions} users={users} />
+                                <TeacherSubmissionsView problem={problem} submissions={problemSubmissions} users={users} />
                             </div>
                         )}
-                         {/* Leaderboard for students remains in the sidebar */}
-                        <div>
+                         <div>
                            <h2 className="text-2xl font-bold text-foreground mb-4">Bảng xếp hạng</h2>
                            <Leaderboard submissions={problemSubmissions} users={users} />
                         </div>

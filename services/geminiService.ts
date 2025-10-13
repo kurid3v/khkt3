@@ -1,4 +1,4 @@
-import type { Feedback, RubricItem } from '@/types';
+import type { Feedback, RubricItem, Problem, Answer } from '@/types';
 
 async function callApi<T>(action: string, payload: unknown): Promise<T> {
   const response = await fetch('/api/gemini', {
@@ -25,10 +25,20 @@ export async function gradeEssay(prompt: string, essay: string, rubric: RubricIt
   }
 }
 
+export async function gradeReadingComprehension(problem: Problem, answers: Answer[]): Promise<Feedback> {
+  try {
+    return await callApi<Feedback>('grade_reading_comprehension', { problem, answers });
+  } catch (error) {
+    console.error("Error in gradeReadingComprehension service:", error);
+    throw new Error("Failed to get a valid response from the AI model.");
+  }
+}
+
 export async function parseRubric(rawRubricText: string): Promise<Omit<RubricItem, 'id'>[]> {
   try {
     return await callApi<Omit<RubricItem, 'id'>[]>('parseRubric', { rawRubricText });
-  } catch (error) {
+  } catch (error)
+{
     console.error("Error in parseRubric service:", error);
     throw new Error("Failed to parse rubric using the AI model.");
   }
