@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useTransition, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import { createProblem } from '@/app/actions';
 import type { RubricItem } from '@/types';
 import { parseRubric } from '@/services/geminiService';
 
-function CreateProblemContent() {
+function CreateProblemForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams?.get('examId');
@@ -22,7 +22,7 @@ function CreateProblemContent() {
   const [error, setError] = useState('');
   const [isParsingRubric, setIsParsingRubric] = useState(false);
   const [parsingError, setParsingError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
 
   const addRubricItem = () => {
@@ -45,10 +45,10 @@ function CreateProblemContent() {
 
   const totalMaxScore = rubricItems.reduce((acc, item) => acc + item.maxScore, 0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    
+    setError('');
+
     if (!currentUser) {
         setError("Bạn phải đăng nhập để tạo bài tập.");
         return;
@@ -57,30 +57,27 @@ function CreateProblemContent() {
       setError('Tiêu đề và đề bài không được để trống.');
       return;
     }
-    setError('');
-    setIsSubmitting(true);
 
-    try {
-      await createProblem({
-          title,
-          prompt,
-          rawRubric,
-          rubricItems,
-          customMaxScore: Number(customMaxScore),
-          isRubricHidden,
-          createdBy: currentUser.id,
-          examId: examId || undefined,
-      });
-      
-      if (examId) {
-        router.push(`/exams/${examId}`);
-      } else {
-        router.push('/dashboard');
-      }
-    } catch (err) {
-      setError("Đã có lỗi xảy ra. Vui lòng thử lại.");
-      setIsSubmitting(false);
-    }
+    startTransition(async () => {
+        try {
+            await createProblem({
+                title,
+                prompt,
+                rawRubric,
+                rubricItems,
+                customMaxScore: Number(customMaxScore),
+                isRubricHidden,
+                createdBy: currentUser.id,
+                examId: examId || undefined,
+            });
+            
+            const destination = examId ? `/exams/${examId}` : '/dashboard';
+            router.push(destination);
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra. Vui lòng thử lại.");
+        }
+    });
   };
   
   const handleParseRubric = async () => {
@@ -107,11 +104,7 @@ function CreateProblemContent() {
   };
   
   const handleCancel = () => {
-    if (examId) {
-        router.push(`/exams/${examId}`);
-    } else {
-        router.push('/dashboard');
-    }
+    router.back();
   };
 
   const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring transition-all duration-200";
@@ -306,10 +299,10 @@ function CreateProblemContent() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isPending}
             className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {isSubmitting ? 'Đang lưu...' : (examId ? 'Thêm câu hỏi' : 'Tạo bài tập')}
+            {isPending ? 'Đang lưu...' : (examId ? 'Thêm câu hỏi' : 'Tạo bài tập')}
           </button>
         </div>
       </form>
@@ -318,9 +311,10 @@ function CreateProblemContent() {
 }
 
 export default function CreateProblemPage() {
+    // Suspense is required for components that use useSearchParams
     return (
-        <Suspense fallback={<div className="p-8">Loading...</div>}>
-            <CreateProblemContent />
+        <Suspense fallback={<div className="p-8">Đang tải...</div>}>
+            <CreateProblemForm />
         </Suspense>
     )
 }

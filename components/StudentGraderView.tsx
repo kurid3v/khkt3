@@ -1,7 +1,6 @@
-
 'use client';
-import React, { useState } from 'react';
-import type { Feedback, Submission, Problem, User } from '@/types';
+import React, { useState, useTransition } from 'react';
+import type { Submission, Problem, User } from '@/types';
 import { gradeEssay } from '@/services/geminiService';
 import EssayInput from './EssayInput';
 import FeedbackDisplay from './FeedbackDisplay';
@@ -10,15 +9,17 @@ import ErrorMessage from './ErrorMessage';
 
 interface StudentGraderViewProps {
   problem: Problem;
-  // FIX: Update the 'user' prop type to accept an object without a password, aligning with the UserSession type used in contexts.
   user: Omit<User, 'password'>;
-  onSubmissionComplete: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => void;
+  onSubmissionComplete: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => Promise<void>;
 }
 
 const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, onSubmissionComplete }) => {
   const [essay, setEssay] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [isGrading, setIsGrading] = useState<boolean>(false);
+
+  const isLoading = isPending || isGrading;
 
   const handleGradeEssay = async () => {
     if (!essay.trim()) {
@@ -26,7 +27,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
       return;
     }
 
-    setIsLoading(true);
+    setIsGrading(true);
     setError(null);
 
     try {
@@ -36,7 +37,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
           problem.rubricItems || [], 
           problem.rawRubric || '', 
           String(problem.customMaxScore || '10')
-        );
+      );
       
       const newSubmissionData: Omit<Submission, 'id' | 'submittedAt'> = {
         problemId: problem.id,
@@ -45,19 +46,24 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
         feedback: result,
         examId: problem.examId,
       };
-      // Let the parent component handle the new submission and navigation
-      onSubmissionComplete(newSubmissionData);
+
+      // Use a transition to call the server action, preventing UI blocking
+      startTransition(async () => {
+        await onSubmissionComplete(newSubmissionData);
+        // After submission, clear the essay field for the next attempt
+        setEssay(''); 
+        setIsGrading(false);
+      });
 
     } catch (e) {
       console.error(e);
       setError('Đã xảy ra lỗi khi chấm bài. Vui lòng thử lại.');
-      setIsLoading(false); // Make sure loading stops on error
-    } 
-    // No finally block to set isLoading to false, because we are navigating away on success.
+      setIsGrading(false);
+    }
   };
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+    <div className="bg-card p-6 sm:p-8 rounded-xl shadow-sm border border-border">
       <EssayInput
         essay={essay}
         setEssay={setEssay}
@@ -67,7 +73,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
 
       <div className="mt-8">
         {isLoading && <LoadingSpinner />}
-        {error && <ErrorMessage message={error} />}
+        {error && !isLoading && <ErrorMessage message={error} />}
       </div>
     </div>
   );

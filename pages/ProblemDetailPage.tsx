@@ -22,6 +22,17 @@ const ProblemDetailPage: React.FC<ProblemDetailPageProps> = ({ problem, submissi
 
     const backButtonText = problem.examId ? 'Quay lại đề thi' : 'Quay lại danh sách';
 
+    // FIX: Create an async wrapper function to match the expected prop type for onSubmissionComplete.
+    const handleSubmissionComplete = async (submissionData: Omit<Submission, 'id' | 'submittedAt'>): Promise<void> => {
+        const newSubmission: Submission = {
+            ...submissionData,
+            id: crypto.randomUUID(),
+            submittedAt: Date.now(),
+        };
+        onAddSubmission(newSubmission);
+    };
+
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">
             <button onClick={onBack} className="mb-6 text-blue-600 font-semibold hover:underline">
@@ -76,7 +87,7 @@ const ProblemDetailPage: React.FC<ProblemDetailPageProps> = ({ problem, submissi
                             <h2 className="text-2xl font-bold text-slate-800 mb-4">
                                 {currentUser.role === 'student' ? 'Nộp bài & Chấm thử' : 'Nộp bài / Chấm thử nghiệm'}
                             </h2>
-                            <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={onAddSubmission} />
+                            <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={handleSubmissionComplete} />
                         </div>
                     </div>
 
