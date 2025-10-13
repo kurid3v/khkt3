@@ -73,46 +73,57 @@ export async function addSubmission(submissionData: Omit<Submission, 'id' | 'sub
     }
 }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function runProblemSimilarityCheck(problemId: string) {
   try {
     const submissions = db.all.submissions.filter(s => s.problemId === problemId);
     const users = db.all.users;
 
     if (submissions.length < 2) {
-      // No need to check if there are less than 2 submissions
       return { success: true, message: "Không đủ bài nộp để so sánh." };
     }
 
     const userMap = new Map(users.map(u => [u.id, u.name]));
 
     for (const subA of submissions) {
-      let bestMatch = {
-        similarityPercentage: 0,
-        explanation: "Không tìm thấy sự tương đồng đáng kể.",
-        mostSimilarTo: undefined as string | undefined,
-        mostSimilarToStudentName: undefined as string | undefined,
-      };
-      let highestSimilarity = -1;
+      const otherSubmissions = submissions
+        .filter(s => s.id !== subA.id)
+        .map(s => ({ id: s.id, essay: s.essay, submitterId: s.submitterId }));
 
-      const otherSubmissions = submissions.filter(s => s.id !== subA.id);
-
-      for (const subB of otherSubmissions) {
-        try {
-          const simResult = await checkSimilarityOnServer(subA.essay, [subB.essay]);
-          if (simResult.similarityPercentage > highestSimilarity) {
-            highestSimilarity = simResult.similarityPercentage;
-            bestMatch = {
-              ...simResult,
-              mostSimilarTo: subB.id,
-              mostSimilarToStudentName: userMap.get(subB.submitterId) || 'Không rõ',
-            };
-          }
-        } catch (e) {
-            console.error(`Error checking similarity between ${subA.id} and ${subB.id}`, e);
-        }
+      if (otherSubmissions.length === 0) {
+        continue;
       }
       
-      db.submissions.update(subA.id, { similarityCheck: bestMatch });
+      try {
+        const simResult = await checkSimilarityOnServer(
+            subA.essay, 
+            otherSubmissions.map(s => s.essay)
+        );
+        
+        const mostSimilarSub = otherSubmissions[simResult.mostSimilarEssayIndex];
+        
+        if (mostSimilarSub) {
+          const resultToStore = {
+            similarityPercentage: simResult.similarityPercentage,
+            explanation: simResult.explanation,
+            mostSimilarTo: mostSimilarSub.id,
+            mostSimilarToStudentName: userMap.get(mostSimilarSub.submitterId) || 'Không rõ',
+          };
+          db.submissions.update(subA.id, { similarityCheck: resultToStore });
+        } else {
+            const defaultResult = {
+                similarityPercentage: 0,
+                explanation: "Không tìm thấy sự tương đồng đáng kể hoặc có lỗi xảy ra.",
+            };
+            db.submissions.update(subA.id, { similarityCheck: defaultResult });
+        }
+      } catch (e) {
+          console.error(`Error checking similarity for ${subA.id}`, e);
+      }
+      
+      // Add a delay to stay within API rate limits (e.g., 10 requests/minute for free tier)
+      await delay(6000); // 6 seconds
     }
 
     revalidatePath(`/problems/${problemId}`);
