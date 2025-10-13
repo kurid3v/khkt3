@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -38,7 +39,7 @@ export default function AllSubmissionsPage() {
                 {submissions.length > 0 ? (
                     <>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-max">
+                            <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-200">
                                         <th className={thClass}>Người nộp</th>

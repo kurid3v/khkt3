@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -106,7 +107,7 @@ export default function AdminDashboardPage() {
                     {activeTab === 'users' && (
                         <>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-max">
+                                <table className="w-full">
                                     <thead>
                                         <tr className={trClass}>
                                             <th className={thClass}>Tên người dùng</th>
@@ -160,7 +161,7 @@ export default function AdminDashboardPage() {
                     {activeTab === 'problems' && (
                          <>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-max">
+                                <table className="w-full">
                                     <thead>
                                         <tr className={trClass}>
                                             <th className={thClass}>Tiêu đề</th>
@@ -204,7 +205,7 @@ export default function AdminDashboardPage() {
                      {activeTab === 'submissions' && (
                          <>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-max">
+                                <table className="w-full">
                                     <thead>
                                         <tr className={trClass}>
                                             <th className={thClass}>Người nộp</th>

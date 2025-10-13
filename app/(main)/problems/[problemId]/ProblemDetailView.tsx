@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -31,7 +32,7 @@ const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<
     return (
         <div className="bg-card p-4 rounded-xl shadow-sm border border-border">
             <div className="overflow-auto max-h-96">
-                <table className="w-full min-w-max">
+                <table className="w-full">
                     <thead>
                         <tr className="border-b border-border">
                             <th className="p-3 text-left text-sm font-semibold text-muted-foreground">Học sinh</th>
