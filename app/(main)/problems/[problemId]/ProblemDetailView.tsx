@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useTransition } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Problem, Submission, User } from '@/types';
 import Leaderboard from '@/components/Leaderboard';
 import StudentGraderView from '@/components/StudentGraderView';
 import { useDataContext } from '@/context/DataContext';
-import { runProblemSimilarityCheck } from '@/app/actions';
-import ShieldCheckIcon from '@/components/icons/ShieldCheckIcon';
 
 interface ProblemDetailViewProps {
     problem: Problem;
@@ -19,15 +17,8 @@ interface ProblemDetailViewProps {
 }
 
 // Teacher/Admin view of submissions for this problem
-const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<User, 'password'>[], problemId: string }> = ({ submissions, users, problemId }) => {
+const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<User, 'password'>[] }> = ({ submissions, users }) => {
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
-
-    const handleRunCheck = () => {
-        startTransition(() => {
-            runProblemSimilarityCheck(problemId);
-        });
-    };
 
     if (submissions.length === 0) {
         return (
@@ -37,36 +28,8 @@ const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<
         );
     }
 
-    const getSimilarityColor = (percentage: number) => {
-        if (percentage > 70) return 'text-destructive';
-        if (percentage > 40) return 'text-orange-500';
-        return 'text-primary';
-    };
-
     return (
         <div className="bg-card p-4 rounded-xl shadow-sm border border-border">
-            <div className="flex justify-end mb-4">
-                 <button 
-                    onClick={handleRunCheck}
-                    disabled={isPending || submissions.length < 2}
-                    className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                    {isPending ? (
-                        <>
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Đang kiểm tra...</span>
-                        </>
-                    ) : (
-                        <>
-                            <ShieldCheckIcon />
-                            <span>Kiểm tra tương đồng</span>
-                        </>
-                    )}
-                </button>
-            </div>
             <div className="overflow-auto max-h-96">
                 <table className="w-full min-w-max">
                     <thead>
@@ -74,32 +37,16 @@ const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<
                             <th className="p-3 text-left text-sm font-semibold text-muted-foreground">Học sinh</th>
                             <th className="p-3 text-left text-sm font-semibold text-muted-foreground">Ngày nộp</th>
                             <th className="p-3 text-right text-sm font-semibold text-muted-foreground">Điểm</th>
-                            <th className="p-3 text-right text-sm font-semibold text-muted-foreground">Tương đồng</th>
                         </tr>
                     </thead>
                     <tbody>
                         {submissions.map(sub => {
                             const submitter = users.find(u => u.id === sub.submitterId);
-                            const similarity = sub.similarityCheck;
                             return (
                                 <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className="cursor-pointer hover:bg-muted/50 border-b border-border last:border-b-0">
                                     <td className="p-3 font-semibold text-foreground">{submitter?.name || 'Không rõ'}</td>
                                     <td className="p-3 text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</td>
                                     <td className="p-3 font-bold text-primary text-right">{sub.feedback.totalScore.toFixed(2)}</td>
-                                    <td className="p-3 text-right">
-                                        {similarity ? (
-                                            <div>
-                                                <span className={`font-bold ${getSimilarityColor(similarity.similarityPercentage)}`}>
-                                                    {similarity.similarityPercentage.toFixed(0)}%
-                                                </span>
-                                                {similarity.mostSimilarToStudentName && (
-                                                    <p className="text-xs text-muted-foreground">(với {similarity.mostSimilarToStudentName})</p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-muted-foreground text-sm">Chưa KT</span>
-                                        )}
-                                    </td>
                                 </tr>
                             )
                         })}
@@ -225,7 +172,7 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                         {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                             <div>
                                 <h2 className="text-2xl font-bold text-foreground mb-4">Danh sách bài nộp</h2>
-                                <TeacherSubmissionsView submissions={problemSubmissions} users={users} problemId={problem.id} />
+                                <TeacherSubmissionsView submissions={problemSubmissions} users={users} />
                             </div>
                         )}
                          {/* Leaderboard for students remains in the sidebar */}

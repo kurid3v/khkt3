@@ -18,13 +18,6 @@ export interface Problem {
   isRubricHidden?: boolean;
 }
 
-export interface SimilarityCheckResult {
-  similarityPercentage: number;
-  explanation: string;
-  mostSimilarTo?: string; // submissionId
-  mostSimilarToStudentName?: string;
-}
-
 export interface Submission {
   id: string;
   problemId: string;
@@ -33,7 +26,6 @@ export interface Submission {
   feedback: Feedback;
   submittedAt: number;
   examId?: string; // ID of the exam this submission belongs to
-  similarityCheck?: SimilarityCheckResult;
 }
 
 export interface Exam {
@@ -78,4 +70,10 @@ export interface Feedback {
   totalScore: number;
   maxScore: number;
   generalSuggestions: string[];
+}
+// FIX: Added the SimilarityCheckResult type to be used across the application for consistency.
+export interface SimilarityCheckResult {
+  similarityPercentage: number;
+  explanation: string;
+  mostSimilarEssayIndex: number;
 }

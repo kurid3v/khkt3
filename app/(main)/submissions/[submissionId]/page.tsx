@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import FeedbackDisplay from '@/components/FeedbackDisplay';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
-import SimilarityCheckDisplay from '@/components/SimilarityCheckDisplay';
 
 export default function SubmissionResultPage({ params }: { params: { submissionId: string } }) {
     const router = useRouter();
@@ -84,9 +83,6 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
                             {submission.essay}
                         </div>
                     </div>
-                    {submission.similarityCheck && (
-                         <SimilarityCheckDisplay similarityCheck={submission.similarityCheck} />
-                    )}
                 </div>
                 
                 {/* Feedback */}

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Feedback, RubricItem, SimilarityCheckResult } from '@/types';
-import { checkSimilarityOnServer } from '@/lib/gemini';
+import type { Feedback, RubricItem } from '@/types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set on the server");
@@ -238,12 +237,6 @@ export async function POST(request: Request) {
       const { rawRubricText } = payload;
       const parsedRubric = await parseRubricOnServer(rawRubricText);
       return NextResponse.json(parsedRubric);
-    }
-
-    if (action === 'checkSimilarity') {
-      const { newEssay, existingEssays } = payload;
-      const result = await checkSimilarityOnServer(newEssay, existingEssays);
-      return NextResponse.json(result);
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

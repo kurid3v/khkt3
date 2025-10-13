@@ -36,7 +36,8 @@ const similarityCheckSystemInstruction = `Bạn là một công cụ kiểm tra 
 - Trả về kết quả dưới dạng JSON theo schema đã cho.`;
 
 
-export async function checkSimilarityOnServer(newEssay: string, existingEssays: string[]): Promise<{ similarityPercentage: number; explanation: string; mostSimilarEssayIndex: number; }> {
+// FIX: Changed return type to use the SimilarityCheckResult interface.
+export async function checkSimilarityOnServer(newEssay: string, existingEssays: string[]): Promise<SimilarityCheckResult> {
     if (existingEssays.length === 0) {
         return { similarityPercentage: 0, explanation: "Không có bài viết nào khác để so sánh.", mostSimilarEssayIndex: -1 };
     }

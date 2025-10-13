@@ -1,4 +1,4 @@
-import type { Feedback, RubricItem, SimilarityCheckResult } from '@/types';
+import type { Feedback, RubricItem } from '@/types';
 
 async function callApi<T>(action: string, payload: unknown): Promise<T> {
   const response = await fetch('/api/gemini', {
@@ -31,18 +31,5 @@ export async function parseRubric(rawRubricText: string): Promise<Omit<RubricIte
   } catch (error) {
     console.error("Error in parseRubric service:", error);
     throw new Error("Failed to parse rubric using the AI model.");
-  }
-}
-
-export async function checkSimilarity(newEssay: string, existingEssays: string[]): Promise<SimilarityCheckResult> {
-  try {
-    return await callApi<SimilarityCheckResult>('checkSimilarity', { newEssay, existingEssays });
-  } catch (error) {
-    console.error("Error in checkSimilarity service:", error);
-    // Return a default low similarity score on failure to avoid blocking submission.
-    return {
-      similarityPercentage: 0,
-      explanation: "Không thể thực hiện kiểm tra độ tương đồng do lỗi hệ thống.",
-    };
   }
 }
