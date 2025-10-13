@@ -70,34 +70,31 @@ export default function AdminDashboardPage() {
             onClick={() => {
                 setActiveTab(tabName);
             }}
-            className={`px-4 py-2 text-base font-semibold transition-colors duration-200 ${
+            className={`px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
                 activeTab === tabName
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-t-md'
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
             }`}
             aria-current={activeTab === tabName}
         >
-            {label} <span className="text-xs bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">{count}</span>
+            {label} <span className="text-xs bg-muted text-muted-foreground font-bold px-2 py-0.5 rounded-full">{count}</span>
         </button>
     );
 
-    const thClass = "p-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider";
-    const tdClass = "p-3 text-slate-800";
-    const trClass = "border-b border-slate-200";
-    const trClickableClass = `${trClass} cursor-pointer hover:bg-slate-50 transition-colors`;
+    const thClass = "p-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider";
+    const tdClass = "p-3 text-foreground text-sm";
+    const trClass = "border-b border-border";
+    const trClickableClass = `${trClass} cursor-pointer hover:bg-muted/50 transition-colors`;
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
-            <button onClick={() => router.push('/dashboard')} className="mb-6 text-blue-600 font-semibold hover:underline">
-                &larr; Quay lại trang chính
-            </button>
             <header className="mb-8">
-                <h1 className="text-4xl font-bold text-slate-900">Bảng điều khiển quản trị</h1>
-                <p className="text-slate-600 mt-2">Quản lý toàn bộ dữ liệu của hệ thống.</p>
+                <h1 className="text-3xl font-bold text-foreground">Bảng điều khiển quản trị</h1>
+                <p className="text-muted-foreground mt-1">Quản lý toàn bộ dữ liệu của hệ thống.</p>
             </header>
 
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
-                <div className="flex border-b border-slate-200 mb-6">
+            <div className="bg-card p-4 sm:p-6 rounded-xl shadow-sm border border-border">
+                <div className="flex border-b border-border mb-6">
                     <TabButton tabName="users" label="Người dùng" count={users.length} />
                     <TabButton tabName="problems" label="Bài tập" count={problems.length} />
                     <TabButton tabName="submissions" label="Bài nộp" count={submissions.length} />
@@ -116,15 +113,15 @@ export default function AdminDashboardPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {displayedUsers.map(user => (
-                                            <tr key={user.id} className={trClass}>
+                                        {displayedUsers.map((user, index) => (
+                                            <tr key={user.id} className={`${trClass} ${index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30'}`}>
                                                 <td className={`${tdClass} font-semibold`}>{user.name}</td>
                                                 <td className={tdClass}>
                                                     {editingUser?.id === user.id ? (
                                                         <select
                                                             value={editingUser.role}
                                                             onChange={handleRoleChange}
-                                                            className="p-1 border border-slate-300 rounded-md"
+                                                            className="p-1 border border-border rounded-md bg-background"
                                                         >
                                                             <option value="student">student</option>
                                                             <option value="teacher">teacher</option>
@@ -138,10 +135,10 @@ export default function AdminDashboardPage() {
                                                     {editingUser?.id === user.id ? (
                                                         <div className="flex gap-2">
                                                             <button onClick={handleSaveUserRole} className="text-sm font-semibold text-green-600 hover:text-green-800">Lưu</button>
-                                                            <button onClick={handleCancelEdit} className="text-sm font-semibold text-slate-500 hover:text-slate-700">Hủy</button>
+                                                            <button onClick={handleCancelEdit} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Hủy</button>
                                                         </div>
                                                     ) : (
-                                                        <button onClick={() => handleEditUserClick(user)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Chỉnh sửa</button>
+                                                        <button onClick={() => handleEditUserClick(user)} className="text-sm font-semibold text-primary hover:text-primary/80">Chỉnh sửa</button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -185,7 +182,7 @@ export default function AdminDashboardPage() {
                                                     <td className={tdClass}>{creator?.name || 'Không rõ'}</td>
                                                     <td className={tdClass}>{new Date(problem.createdAt).toLocaleDateString()}</td>
                                                     <td className={tdClass}>
-                                                        <button onClick={handleEditClick} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Chỉnh sửa</button>
+                                                        <button onClick={handleEditClick} className="text-sm font-semibold text-primary hover:text-primary/80">Chỉnh sửa</button>
                                                     </td>
                                                 </tr>
                                             )
@@ -221,8 +218,8 @@ export default function AdminDashboardPage() {
                                             return (
                                                 <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className={trClickableClass}>
                                                     <td className={`${tdClass} font-semibold`}>{submitter?.name || 'Không rõ'}</td>
-                                                    <td className={`${tdClass} text-blue-700`}>{problem?.title || 'Không rõ'}</td>
-                                                    <td className={`${tdClass} font-bold`}>{sub.feedback.totalScore.toFixed(2)}</td>
+                                                    <td className={`${tdClass} text-muted-foreground`}>{problem?.title || 'Không rõ'}</td>
+                                                    <td className={`${tdClass} font-bold text-primary`}>{sub.feedback.totalScore.toFixed(2)}</td>
                                                     <td className={tdClass}>{new Date(sub.submittedAt).toLocaleString()}</td>
                                                 </tr>
                                             )

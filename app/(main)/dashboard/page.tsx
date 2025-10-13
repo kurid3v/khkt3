@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
+import BookOpenIcon from '@/components/icons/BookOpenIcon';
 
 export default function DashboardPage() {
     const { currentUser, problems } = useDataContext();
@@ -18,12 +19,17 @@ export default function DashboardPage() {
 
     const ProblemCard: React.FC<{ problem: Problem }> = ({ problem }) => (
         <div 
-            className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border border-slate-200 group"
+            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer border border-border group"
             onClick={() => router.push(`/problems/${problem.id}`)}
         >
-            <h3 className="text-xl font-bold text-slate-800 truncate">{problem.title}</h3>
-            <p className="text-slate-600 mt-2 h-12 overflow-hidden text-ellipsis">{problem.prompt}</p>
-            <div className="text-right mt-4 text-sm font-semibold text-blue-600">
+            <div className="flex items-start justify-between">
+                <h3 className="text-lg font-bold text-foreground pr-4">{problem.title}</h3>
+                <div className="p-2 bg-secondary rounded-md">
+                    <BookOpenIcon className="w-5 h-5 text-primary"/>
+                </div>
+            </div>
+            <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{problem.prompt}</p>
+            <div className="text-right mt-4 text-sm font-semibold text-primary">
                 <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
                     Xem chi tiết &rarr;
                 </span>
@@ -36,7 +42,7 @@ export default function DashboardPage() {
         case 'teacher':
             return 'Bài tập của bạn';
         case 'admin':
-            return 'Tổng quan bài tập (Quản trị viên)';
+            return 'Tổng quan bài tập';
         default:
             return 'Danh sách bài tập';
         }
@@ -45,13 +51,13 @@ export default function DashboardPage() {
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-4xl font-bold text-slate-900">
+                <h1 className="text-3xl font-bold text-foreground">
                     {getHeading()}
                 </h1>
                 {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                     <Link href="/problems/create" passHref>
                         <button
-                            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                            className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors"
                         >
                             + Tạo bài tập mới
                         </button>
@@ -66,15 +72,16 @@ export default function DashboardPage() {
             </div>
             
             {displayedProblems.length === 0 && (
-                <div className="text-center py-12 bg-slate-50 rounded-lg">
-                    {currentUser.role === 'teacher' ? (
-                        <>
-                            <p className="text-slate-500">Bạn chưa tạo bài tập nào.</p>
-                            <p className="text-slate-500">Nhấn "Tạo bài tập mới" để bắt đầu.</p>
-                        </>
-                    ) : (
-                        <p className="text-slate-500">Chưa có bài tập nào được giao.</p>
-                    )}
+                <div className="text-center py-16 bg-card rounded-lg border border-dashed">
+                     <p className="text-muted-foreground">
+                        {currentUser.role === 'teacher' 
+                            ? 'Bạn chưa tạo bài tập nào.' 
+                            : 'Chưa có bài tập nào được giao.'
+                        }
+                    </p>
+                    {currentUser.role === 'teacher' &&
+                        <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo bài tập mới" để bắt đầu.</p>
+                    }
                 </div>
             )}
         </div>

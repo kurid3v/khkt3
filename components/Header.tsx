@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import type { User } from '../types';
 
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user }) => {
   const { logout } = useDataContext();
+  const pathname = usePathname();
 
   const roleTextMap = {
     teacher: 'Giáo viên',
@@ -17,28 +19,35 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
     admin: 'Quản trị viên'
   };
   const roleColorMap = {
-    teacher: 'bg-green-100 text-green-800',
-    student: 'bg-blue-100 text-blue-800',
-    admin: 'bg-purple-100 text-purple-800'
+    teacher: 'bg-green-100 text-green-800 border border-green-200',
+    student: 'bg-blue-100 text-blue-800 border border-blue-200',
+    admin: 'bg-purple-100 text-purple-800 border border-purple-200'
   };
 
   const roleText = roleTextMap[user.role] || 'Không xác định';
   const roleColor = roleColorMap[user.role] || 'bg-slate-100 text-slate-800';
   
-  const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => (
-    <Link href={href} className="px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 rounded-md transition-colors">
-        {children}
-    </Link>
-  );
+  const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+    const isActive = pathname === href;
+    return (
+        <Link href={href} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
+            isActive 
+            ? 'text-primary' 
+            : 'text-muted-foreground hover:text-foreground'
+        }`}>
+            {children}
+        </Link>
+    );
+  };
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-10">
+    <header className="bg-card border-b sticky top-0 z-10">
       <div className="container mx-auto px-4 py-3 max-w-7xl flex justify-between items-center">
-        <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-2xl font-bold text-slate-800">
+        <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="text-xl font-bold text-foreground">
                 Lớp học AI
             </Link>
-            <nav className="flex items-center border-l border-slate-200 pl-2">
+            <nav className="flex items-center gap-2">
                 <NavLink href="/dashboard">Bài tập</NavLink>
                 <NavLink href="/exams">Đề thi</NavLink>
                 <NavLink href="/submissions/all">Bài nộp</NavLink>
@@ -49,14 +58,14 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="font-semibold text-slate-900">{user.name}</span>
+            <span className="font-semibold text-foreground">{user.name}</span>
             <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>
               {roleText}
             </span>
           </div>
           <button
             onClick={logout}
-            className="px-4 py-2 text-sm bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+            className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted transition-colors"
           >
             Đăng xuất
           </button>

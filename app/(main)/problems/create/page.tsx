@@ -90,18 +90,19 @@ function CreateProblemContent() {
     }
   };
 
-  const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200";
+  const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring transition-all duration-200";
   const textareaClass = `${inputClass} resize-y`;
+  const labelClass = "text-base font-semibold text-foreground";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-4xl font-bold text-slate-900 mb-8">
+      <h1 className="text-3xl font-bold text-foreground mb-8">
         {examId ? 'Thêm câu hỏi vào đề thi' : 'Tạo bài tập mới'}
       </h1>
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg space-y-6">
-        {error && <p className="text-red-500 bg-red-100 p-3 rounded-md">{error}</p>}
+      <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-sm border border-border space-y-6">
+        {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md">{error}</p>}
         <div>
-          <label htmlFor="problem-title" className="text-lg font-semibold text-slate-800">
+          <label htmlFor="problem-title" className={labelClass}>
             Tiêu đề bài tập / Tên câu hỏi
           </label>
           <input
@@ -114,7 +115,7 @@ function CreateProblemContent() {
           />
         </div>
         <div>
-          <label htmlFor="problem-prompt" className="text-lg font-semibold text-slate-800">
+          <label htmlFor="problem-prompt" className={labelClass}>
             Đề bài / Yêu cầu chi tiết
           </label>
           <textarea
@@ -127,7 +128,7 @@ function CreateProblemContent() {
         </div>
 
         <div>
-            <label htmlFor="max-score-input" className="text-lg font-semibold text-slate-800">
+            <label htmlFor="max-score-input" className={labelClass}>
                 Thang điểm
             </label>
             <input
@@ -140,19 +141,19 @@ function CreateProblemContent() {
                 className={`${inputClass} w-40`}
                 aria-describedby="max-score-description"
             />
-            <p id="max-score-description" className="text-sm text-slate-500 mt-1">
+            <p id="max-score-description" className="text-sm text-muted-foreground mt-1">
                 Điểm cuối cùng của bài làm sẽ được quy đổi về thang điểm này.
             </p>
         </div>
 
         {/* Rubric Section */}
-        <div>
+        <div className="pt-6 border-t border-border">
             <div className="flex justify-between items-center flex-wrap gap-2">
-                 <label className="text-lg font-semibold text-slate-800">
+                 <label className={labelClass}>
                     Biểu điểm chấm (tùy chọn)
                 </label>
                 <div className="flex items-center gap-2">
-                    <label htmlFor="hide-rubric-toggle" className="text-sm font-medium text-slate-600 cursor-pointer">
+                    <label htmlFor="hide-rubric-toggle" className="text-sm font-medium text-muted-foreground cursor-pointer">
                         Ẩn với học sinh
                     </label>
                     <button
@@ -160,8 +161,8 @@ function CreateProblemContent() {
                         id="hide-rubric-toggle"
                         onClick={() => setIsRubricHidden(!isRubricHidden)}
                         className={`${
-                        isRubricHidden ? 'bg-blue-600' : 'bg-slate-300'
-                        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                        isRubricHidden ? 'bg-primary' : 'bg-input'
+                        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`}
                         role="switch"
                         aria-checked={isRubricHidden}
                     >
@@ -174,30 +175,30 @@ function CreateProblemContent() {
                     </button>
                 </div>
             </div>
-            <p className="text-sm text-slate-500 mt-1 mb-2">
+            <p className="text-sm text-muted-foreground mt-1 mb-2">
                 Cung cấp biểu điểm chi tiết để AI chấm chính xác hơn. Điểm sẽ được tự động quy đổi về thang điểm bạn đã nhập ở trên.
             </p>
-            <div className="mt-2 flex flex-col gap-3 p-4 border border-dashed border-slate-300 rounded-lg">
+            <div className="mt-2 flex flex-col gap-3 p-4 bg-secondary/30 rounded-lg">
                 <div className="flex justify-between items-center gap-2">
-                    <label htmlFor="raw-rubric-input" className="text-md font-semibold text-slate-700">
+                    <label htmlFor="raw-rubric-input" className="text-md font-semibold text-foreground">
                         Dán toàn bộ hướng dẫn chấm
                     </label>
                     <button
                         type="button"
                         onClick={handleParseRubric}
                         disabled={!rawRubric.trim() || isParsingRubric}
-                        className="px-3 py-1.5 text-sm text-blue-600 font-semibold bg-blue-100 hover:bg-blue-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                        className="px-3 py-1.5 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                     >
                         {isParsingRubric ? (
                             <>
-                                <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                                 <span>Đang phân tích...</span>
                             </>
                         ) : (
-                            'Phân tích Hướng dẫn chấm'
+                            'Phân tích bằng AI'
                         )}
                     </button>
                 </div>
@@ -206,33 +207,33 @@ function CreateProblemContent() {
                     value={rawRubric}
                     onChange={(e) => setRawRubric(e.target.value)}
                     placeholder="Dán hướng dẫn chấm vào đây, sau đó nhấn nút 'Phân tích' để AI tự động tạo biểu điểm chi tiết."
-                    className={`${textareaClass} h-40`}
+                    className={`${textareaClass} h-40 bg-card`}
                     aria-label="Hướng dẫn chấm chi tiết"
                 />
-                 {parsingError && <p className="text-sm text-red-500 -mt-1">{parsingError}</p>}
+                 {parsingError && <p className="text-sm text-destructive -mt-1">{parsingError}</p>}
                 
                 <div className="relative my-2">
                     <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                        <div className="w-full border-t border-slate-300"></div>
+                        <div className="w-full border-t border-border"></div>
                     </div>
                     <div className="relative flex justify-center">
-                        <span className="bg-white px-2 text-sm text-slate-500">HOẶC</span>
+                        <span className="bg-secondary/30 px-2 text-sm text-muted-foreground">HOẶC</span>
                     </div>
                     </div>
 
-                <label className="text-md font-semibold text-slate-700">
-                    Tạo biểu điểm theo từng tiêu chí (hoặc chỉnh sửa sau khi phân tích)
+                <label className="text-md font-semibold text-foreground">
+                    Tạo biểu điểm thủ công
                 </label>
 
                 {rubricItems.map((item, index) => (
                     <div key={item.id} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <span className="font-medium text-slate-500">{index + 1}.</span>
+                    <span className="font-medium text-muted-foreground">{index + 1}.</span>
                     <input
                         type="text"
                         value={item.criterion}
                         onChange={(e) => updateRubricItem(item.id, 'criterion', e.target.value)}
                         placeholder="Nhập tên tiêu chí..."
-                        className="flex-grow p-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                        className="flex-grow p-2 border border-border rounded-md focus:ring-1 focus:ring-ring bg-card"
                         aria-label={`Tiêu chí ${index + 1}`}
                     />
                     <input
@@ -242,13 +243,13 @@ function CreateProblemContent() {
                         step="any"
                         onChange={(e) => updateRubricItem(item.id, 'maxScore', e.target.value)}
                         placeholder="Điểm"
-                        className="w-24 p-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                        className="w-24 p-2 border border-border rounded-md focus:ring-1 focus:ring-ring bg-card"
                         aria-label={`Điểm tối đa cho tiêu chí ${index + 1}`}
                     />
                     <button
                         type="button"
                         onClick={() => removeRubricItem(item.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
                         aria-label={`Xóa tiêu chí ${index + 1}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -260,12 +261,12 @@ function CreateProblemContent() {
                 <button
                     type="button"
                     onClick={addRubricItem}
-                    className="mt-2 self-start px-4 py-2 text-sm text-blue-600 font-semibold bg-blue-100 hover:bg-blue-200 rounded-md"
+                    className="mt-2 self-start px-4 py-2 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md"
                 >
-                    + Thêm tiêu chí thủ công
+                    + Thêm tiêu chí
                 </button>
                 {rubricItems.length > 0 && (
-                    <div className="mt-2 text-right font-semibold text-slate-700">Tổng điểm biểu điểm: {totalMaxScore}</div>
+                    <div className="mt-2 text-right font-semibold text-foreground">Tổng điểm biểu điểm: {totalMaxScore}</div>
                 )}
             </div>
         </div>
@@ -275,13 +276,13 @@ function CreateProblemContent() {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-6 py-3 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+            className="px-6 py-3 bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted transition-colors"
           >
             Hủy
           </button>
           <button
             type="submit"
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 transition-colors"
           >
             {examId ? 'Thêm câu hỏi' : 'Tạo bài tập'}
           </button>

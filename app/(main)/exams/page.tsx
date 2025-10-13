@@ -7,6 +7,7 @@ import ClockIcon from '@/components/icons/ClockIcon';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
 
 
 export default function ExamsPage() {
@@ -23,11 +24,11 @@ export default function ExamsPage() {
   const getExamStatus = (startTime: number, endTime: number): { text: string; color: string } => {
     const now = Date.now();
     if (now < startTime) {
-      return { text: 'Sắp diễn ra', color: 'bg-blue-100 text-blue-800' };
+      return { text: 'Sắp diễn ra', color: 'bg-blue-100 text-blue-800 border border-blue-200' };
     } else if (now >= startTime && now <= endTime) {
-      return { text: 'Đang diễn ra', color: 'bg-green-100 text-green-800' };
+      return { text: 'Đang diễn ra', color: 'bg-green-100 text-green-800 border border-green-200' };
     } else {
-      return { text: 'Đã kết thúc', color: 'bg-slate-100 text-slate-800' };
+      return { text: 'Đã kết thúc', color: 'bg-slate-100 text-slate-800 border border-slate-200' };
     }
   };
 
@@ -48,13 +49,13 @@ export default function ExamsPage() {
     const status = getExamStatus(exam.startTime, exam.endTime);
     return (
         <div 
-            className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all border border-slate-200 flex flex-col cursor-pointer relative group"
+            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all border border-border flex flex-col cursor-pointer relative group"
             onClick={() => router.push(`/exams/${exam.id}`)}
         >
             {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
               <button
                 onClick={(e) => handleDeleteClick(e, exam)}
-                className="absolute top-2 right-2 p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 aria-label={`Xóa đề thi ${exam.title}`}
                 title="Xóa đề thi"
               >
@@ -62,20 +63,23 @@ export default function ExamsPage() {
               </button>
             )}
             <div className="flex-grow">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-bold text-slate-800 truncate flex-1 pr-2">{exam.title}</h3>
-                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${status.color}`}>
+                <div className="flex justify-between items-start gap-4">
+                    <h3 className="text-lg font-bold text-foreground flex-1">{exam.title}</h3>
+                     <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${status.color}`}>
                         {status.text}
                     </span>
                 </div>
-                <p className="text-slate-600 mt-2 h-12 overflow-hidden text-ellipsis">{exam.description}</p>
+                <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{exam.description}</p>
             </div>
-            <div className="mt-4 border-t border-slate-200 pt-3 flex justify-between items-center text-sm text-slate-600">
+            <div className="mt-4 border-t border-border pt-4 flex justify-between items-center text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
-                    <span className="font-semibold">{problemCount} câu hỏi</span>
+                    <div className="flex items-center gap-1.5">
+                        <ClipboardListIcon className="h-4 w-4" />
+                        <span className="font-semibold">{problemCount} câu hỏi</span>
+                    </div>
                     <div className="flex items-center gap-1.5" title="Thời gian bắt đầu">
                         <ClockIcon />
-                        <span>{new Date(exam.startTime).toLocaleString('vi-VN')}</span>
+                        <span>{new Date(exam.startTime).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
                 </div>
                 {exam.password && (
@@ -92,13 +96,13 @@ export default function ExamsPage() {
     <>
       <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
           <div className="flex justify-between items-center mb-8">
-              <h1 className="text-4xl font-bold text-slate-900">
+              <h1 className="text-3xl font-bold text-foreground">
                   Danh sách đề thi
               </h1>
               {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                   <button
                       onClick={() => router.push('/exams/create')}
-                      className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                      className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors"
                   >
                       + Tạo đề thi mới
                   </button>
@@ -112,11 +116,13 @@ export default function ExamsPage() {
           </div>
           
           {exams.length === 0 && (
-              <div className="text-center py-12 bg-slate-50 rounded-lg">
-                  <p className="text-slate-500">Chưa có đề thi nào được tạo.</p>
-                  {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                      <p className="text-slate-500">Nhấn "Tạo đề thi mới" để bắt đầu.</p>
-                  )}
+               <div className="text-center py-16 bg-card rounded-lg border border-dashed">
+                     <p className="text-muted-foreground">
+                        Chưa có đề thi nào được tạo.
+                    </p>
+                    {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
+                      <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo đề thi mới" để bắt đầu.</p>
+                    )}
               </div>
           )}
       </div>

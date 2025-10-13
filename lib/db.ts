@@ -1,23 +1,53 @@
 
+
 import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
+import fs from 'fs';
+import path from 'path';
+// FIX: Import 'process' to ensure the correct Node.js process type is used, resolving the 'cwd' property error.
+import process from 'process';
 
-// Importing the raw JSON data.
-import usersData from '@/data/users.json';
-import problemsData from '@/data/problems.json';
-import submissionsData from '@/data/submissions.json';
-import examsData from '@/data/exams.json';
-import examAttemptsData from '@/data/examAttempts.json';
+// Define file paths
+const dataDir = path.join(process.cwd(), 'data');
+const usersPath = path.join(dataDir, 'users.json');
+const problemsPath = path.join(dataDir, 'problems.json');
+const submissionsPath = path.join(dataDir, 'submissions.json');
+const examsPath = path.join(dataDir, 'exams.json');
+const examAttemptsPath = path.join(dataDir, 'examAttempts.json');
 
-// In-memory data store. Changes will be lost on server restart.
-const store = {
-    users: [...usersData] as User[],
-    problems: [...problemsData] as Problem[],
-    submissions: [...submissionsData] as Submission[],
-    exams: [...examsData] as Exam[],
-    examAttempts: [...examAttemptsData] as ExamAttempt[],
+// Helper to read JSON file safely
+const readData = <T>(filePath: string): T[] => {
+    try {
+        if (fs.existsSync(filePath)) {
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            // Handle empty file case
+            return fileContent ? JSON.parse(fileContent) : [];
+        }
+    } catch (error) {
+        console.error(`Error reading data from ${filePath}:`, error);
+    }
+    return [];
 };
 
-// A simple data access layer to simulate database operations.
+// Helper to write JSON file
+const writeData = (filePath: string, data: any) => {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+        console.error(`Error writing data to ${filePath}:`, error);
+    }
+};
+
+
+// In-memory data store, initialized by reading from files.
+const store = {
+    users: readData<User>(usersPath),
+    problems: readData<Problem>(problemsPath),
+    submissions: readData<Submission>(submissionsPath),
+    exams: readData<Exam>(examsPath),
+    examAttempts: readData<ExamAttempt>(examAttemptsPath),
+};
+
+// Data access layer that now persists changes to JSON files.
 export const db = {
     get all() {
         return store;
@@ -28,6 +58,7 @@ export const db = {
         create: (data: Omit<User, 'id'>) => {
             const newUser: User = { ...data, id: crypto.randomUUID() };
             store.users.push(newUser);
+            writeData(usersPath, store.users); // Persist
             return newUser;
         },
         update: (id: string, data: Partial<User>) => {
@@ -35,6 +66,7 @@ export const db = {
             if (userIndex === -1) return null;
             const updatedUser = { ...store.users[userIndex], ...data };
             store.users[userIndex] = updatedUser;
+            writeData(usersPath, store.users); // Persist
             return updatedUser;
         },
     },
@@ -42,6 +74,7 @@ export const db = {
         create: (data: Omit<Problem, 'id' | 'createdAt'>) => {
             const newProblem: Problem = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
             store.problems.push(newProblem);
+            writeData(problemsPath, store.problems); // Persist
             return newProblem;
         },
         update: (id: string, data: Partial<Problem>) => {
@@ -49,6 +82,7 @@ export const db = {
             if (problemIndex === -1) return null;
             const updatedProblem = { ...store.problems[problemIndex], ...data };
             store.problems[problemIndex] = updatedProblem;
+            writeData(problemsPath, store.problems); // Persist
             return updatedProblem;
         }
     },
@@ -56,6 +90,7 @@ export const db = {
          create: (data: Omit<Submission, 'id' | 'submittedAt'>) => {
             const newSubmission: Submission = { ...data, id: crypto.randomUUID(), submittedAt: Date.now() };
             store.submissions.push(newSubmission);
+            writeData(submissionsPath, store.submissions); // Persist
             return newSubmission;
         },
     },
@@ -63,6 +98,7 @@ export const db = {
          create: (data: Omit<Exam, 'id' | 'createdAt'>) => {
             const newExam: Exam = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
             store.exams.push(newExam);
+            writeData(examsPath, store.exams); // Persist
             return newExam;
         },
         delete: (id: string) => {
@@ -70,6 +106,8 @@ export const db = {
             store.exams = store.exams.filter(e => e.id !== id);
             // Also delete associated problems
             store.problems = store.problems.filter(p => p.examId !== id);
+            writeData(examsPath, store.exams); // Persist exams
+            writeData(problemsPath, store.problems); // Persist problems
             return store.exams.length < initialLength;
         }
     },
@@ -84,6 +122,7 @@ export const db = {
                 submissionIds: [],
             };
             store.examAttempts.push(newAttempt);
+            writeData(examAttemptsPath, store.examAttempts); // Persist
             return newAttempt;
         },
         update: (id: string, data: Partial<ExamAttempt>) => {
@@ -91,13 +130,7 @@ export const db = {
             if (attemptIndex === -1) return null;
             const updatedAttempt = { ...store.examAttempts[attemptIndex], ...data };
             store.examAttempts[attemptIndex] = updatedAttempt;
-             // Also update submissions if they are part of the update
-            if (data.submissionIds && data.submissionIds.length > 0) {
-                 const newSubmissions = store.submissions.filter(s => data.submissionIds?.includes(s.id));
-                 if(newSubmissions.length > 0) {
-                    // This is simplified; a real DB would handle transactions.
-                 }
-            }
+            writeData(examAttemptsPath, store.examAttempts); // Persist
             return updatedAttempt;
         },
     }

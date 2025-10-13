@@ -15,7 +15,6 @@ export default function SignUpPage() {
   const { signUp } = useDataContext();
   const router = useRouter();
 
-  // FIX: Make handleSubmit async and await the signUp call.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -40,21 +39,21 @@ export default function SignUpPage() {
     }
   };
   
-  const inputClasses = "block w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200";
+  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200";
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <form onSubmit={handleSubmit} className="bg-white shadow-2xl rounded-2xl px-8 pt-6 pb-8 mb-4">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-slate-900">Tạo tài khoản</h1>
-            <p className="text-slate-600 mt-2">Tham gia Lớp học AI ngay hôm nay</p>
+        <form onSubmit={handleSubmit} className="bg-card shadow-lg rounded-xl border border-border p-8 space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground">Tạo tài khoản</h1>
+            <p className="text-muted-foreground mt-2">Tham gia Lớp học AI ngay hôm nay</p>
           </div>
           
-          {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4 text-center">{error}</p>}
+          {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
 
-          <div className="mb-4">
-            <label htmlFor="name-input" className="block text-slate-700 text-sm font-bold mb-2">
+          <div>
+            <label htmlFor="name-input" className="block text-foreground text-sm font-semibold mb-2">
               Họ và tên (dùng để đăng nhập)
             </label>
             <input
@@ -67,8 +66,8 @@ export default function SignUpPage() {
             />
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="password-input" className="block text-slate-700 text-sm font-bold mb-2">
+          <div>
+            <label htmlFor="password-input" className="block text-foreground text-sm font-semibold mb-2">
               Mật khẩu
             </label>
             <input
@@ -81,8 +80,8 @@ export default function SignUpPage() {
             />
           </div>
 
-          <div className="mb-6">
-            <label htmlFor="confirm-password-input" className="block text-slate-700 text-sm font-bold mb-2">
+          <div>
+            <label htmlFor="confirm-password-input" className="block text-foreground text-sm font-semibold mb-2">
               Xác nhận mật khẩu
             </label>
             <input
@@ -95,48 +94,48 @@ export default function SignUpPage() {
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-slate-700 text-sm font-bold mb-2">
+          <div>
+            <label className="block text-foreground text-sm font-semibold mb-2">
               Bạn là
             </label>
-            <div className="flex rounded-lg border border-slate-300 p-1">
+            <div className="flex rounded-md border border-border p-1 bg-background">
                 <button
                     type="button"
                     onClick={() => setRole('student')}
-                    className={`w-1/2 py-2 rounded-md font-semibold transition-colors ${role === 'student' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`w-1/2 py-2 rounded-sm font-semibold transition-colors ${role === 'student' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                     Học sinh
                 </button>
                 <button
                     type="button"
                     onClick={() => setRole('teacher')}
-                    className={`w-1/2 py-2 rounded-md font-semibold transition-colors ${role === 'teacher' ? 'bg-green-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`w-1/2 py-2 rounded-sm font-semibold transition-colors ${role === 'teacher' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                     Giáo viên
                 </button>
             </div>
           </div>
           
-          <div className="flex items-center justify-center">
+          <div>
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!name || !password || !confirmPassword}
             >
               Đăng ký
             </button>
           </div>
 
-          <div className="text-center mt-6">
+          <div className="text-center">
             <Link
               href="/login"
-              className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
+              className="inline-block align-baseline font-semibold text-sm text-primary hover:text-primary/90"
             >
               &larr; Quay lại Đăng nhập
             </Link>
           </div>
         </form>
-        <footer className="text-center mt-8 text-slate-500 text-sm">
+        <footer className="text-center mt-8 text-muted-foreground text-sm">
           <p>Cung cấp bởi công nghệ AI tiên tiến.</p>
         </footer>
       </div>

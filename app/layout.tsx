@@ -1,12 +1,24 @@
-// FIX: Add missing React import to resolve 'Cannot find namespace' error.
 import React from 'react';
 import type { Metadata } from "next";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { DataProvider } from "@/context/DataContext";
 import "@/styles/globals.css";
 
+
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ['700', '800'],
+  variable: '--font-plus-jakarta-sans',
+})
+
 export const metadata: Metadata = {
-  title: "AI Literature Essay Grader",
-  description: "A web application for teachers to create essay assignments and for students to submit and receive AI-powered grading and feedback. Features leaderboards and submission history.",
+  title: "Lớp học Văn AI",
+  description: "Một ứng dụng web dành cho giáo viên để tạo bài tập làm văn và cho học sinh nộp bài, nhận điểm và phản hồi được hỗ trợ bởi AI. Có bảng xếp hạng và lịch sử nộp bài.",
 };
 
 export default function RootLayout({
@@ -15,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-slate-50">
+    <html lang="vi" className={`${inter.variable} ${plusJakartaSans.variable}`}>
+      <body className="font-sans">
         <DataProvider>
           {children}
         </DataProvider>
