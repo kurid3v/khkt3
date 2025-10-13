@@ -1,21 +1,71 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useTransition, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDataContext } from '@/context/DataContext';
-import type { Exam } from '@/types';
+import { useSession } from '@/context/SessionContext';
+import { removeExam } from '@/app/actions';
+import type { Exam, Problem } from '@/types';
 import ClockIcon from '@/components/icons/ClockIcon';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
 
-
+// This is now the Client Component that handles interaction
 export default function ExamsPage() {
   const router = useRouter();
-  const { currentUser, exams, problems, deleteExam } = useDataContext();
-  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const { currentUser } = useSession();
 
-  if (!currentUser) return null;
+  // Data that would be fetched by a parent Server Component
+  const [exams, setExams] = React.useState<Exam[]>([]);
+  const [problems, setProblems] = React.useState<Problem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    // Simulate fetching data, as this component is now responsible for it in this architecture
+    const fetchData = async () => {
+      setIsLoading(true);
+      const res = await fetch('/api/bootstrap');
+      const data = await res.json();
+      setExams(data.exams);
+      setProblems(data.problems);
+      setIsLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  
+  // Optimistic UI for deletions
+  const [optimisticExams, setOptimisticExams] = useOptimistic(
+    exams,
+    (state, examId: string) => state.filter(e => e.id !== examId)
+  );
+
+  const handleDeleteClick = (e: React.MouseEvent, exam: Exam) => {
+    e.stopPropagation();
+    setExamToDelete(exam);
+  };
+  
+  const confirmDelete = () => {
+    if (examToDelete) {
+      startTransition(async () => {
+        setOptimisticExams(examToDelete.id);
+        await removeExam(examToDelete.id);
+        // In a real app with server-driven state, revalidation would handle this.
+        // For our simulation, we manually update the client state after the action.
+        setExams(currentExams => currentExams.filter(e => e.id !== examToDelete.id));
+      });
+      setExamToDelete(null);
+    }
+  };
+  
+  const [isPending, startTransition] = useTransition();
+
+  if (isLoading || !currentUser) return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
+      </div>
+  );
 
   const getProblemCountForExam = (examId: string) => {
     return problems.filter(p => p.examId === examId).length;
@@ -29,18 +79,6 @@ export default function ExamsPage() {
       return { text: 'Đang diễn ra', color: 'bg-green-100 text-green-800 border border-green-200' };
     } else {
       return { text: 'Đã kết thúc', color: 'bg-slate-100 text-slate-800 border border-slate-200' };
-    }
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, exam: Exam) => {
-    e.stopPropagation(); // Prevent card click from navigating
-    setExamToDelete(exam);
-  };
-  
-  const confirmDelete = () => {
-    if (examToDelete) {
-      deleteExam(examToDelete.id);
-      setExamToDelete(null);
     }
   };
 
@@ -110,12 +148,12 @@ export default function ExamsPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {exams.map(exam => (
+              {optimisticExams.map(exam => (
                   <ExamCard key={exam.id} exam={exam} />
               ))}
           </div>
           
-          {exams.length === 0 && (
+          {optimisticExams.length === 0 && (
                <div className="text-center py-16 bg-card rounded-lg border border-dashed">
                      <p className="text-muted-foreground">
                         Chưa có đề thi nào được tạo.

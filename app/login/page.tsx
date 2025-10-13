@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useDataContext } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 
 export default function LoginPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { login } = useDataContext();
+  const { login } = useSession();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {

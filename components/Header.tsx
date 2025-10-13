@@ -1,17 +1,23 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useDataContext } from '@/context/DataContext';
+import { usePathname, useRouter } from 'next/navigation';
+import { useSession } from '@/context/SessionContext';
 import type { User } from '../types';
 
 interface HeaderProps {
-  user: User;
+  user: Omit<User, 'password'>;
 }
 
 const Header: React.FC<HeaderProps> = ({ user }) => {
-  const { logout } = useDataContext();
+  const { logout } = useSession();
+  const router = useRouter();
   const pathname = usePathname();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  }
 
   const roleTextMap = {
     teacher: 'Giáo viên',
@@ -64,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
             </span>
           </div>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted transition-colors"
           >
             Đăng xuất

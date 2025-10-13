@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import { DataProvider } from "@/context/DataContext";
+import { SessionProvider } from "@/context/SessionContext"; // Updated import
 import "@/styles/globals.css";
 
 
@@ -29,9 +29,9 @@ export default function RootLayout({
   return (
     <html lang="vi" className={`${inter.variable} ${plusJakartaSans.variable}`}>
       <body className="font-sans">
-        <DataProvider>
+        <SessionProvider> {/* Updated Provider */}
           {children}
-        </DataProvider>
+        </SessionProvider>
       </body>
     </html>
   );

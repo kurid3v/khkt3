@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDataContext } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 
 export default function HomePage() {
-  const { currentUser, isLoading } = useDataContext();
+  const { currentUser, isLoading } = useSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -19,8 +19,8 @@ export default function HomePage() {
   }, [currentUser, isLoading, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
     </div>
   );
 }

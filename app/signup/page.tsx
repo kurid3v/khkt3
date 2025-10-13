@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useDataContext } from '@/context/DataContext';
-
+import { useSession } from '@/context/SessionContext';
 
 export default function SignUpPage() {
   const [name, setName] = useState('');
@@ -12,7 +11,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  const { signUp } = useDataContext();
+  const { signUp } = useSession();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {

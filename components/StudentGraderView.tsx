@@ -10,7 +10,8 @@ import ErrorMessage from './ErrorMessage';
 
 interface StudentGraderViewProps {
   problem: Problem;
-  user: User;
+  // FIX: Update the 'user' prop type to accept an object without a password, aligning with the UserSession type used in contexts.
+  user: Omit<User, 'password'>;
   onSubmissionComplete: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => void;
 }
 

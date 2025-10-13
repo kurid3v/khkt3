@@ -2,7 +2,8 @@
 
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useDataContext } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
+import { createProblem } from '@/app/actions';
 import type { RubricItem } from '@/types';
 import { parseRubric } from '@/services/geminiService';
 
@@ -10,8 +11,7 @@ function CreateProblemContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams?.get('examId');
-
-  const { addProblem } = useDataContext();
+  const { currentUser } = useSession();
 
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -22,6 +22,8 @@ function CreateProblemContent() {
   const [error, setError] = useState('');
   const [isParsingRubric, setIsParsingRubric] = useState(false);
   const [parsingError, setParsingError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const addRubricItem = () => {
     setRubricItems([...rubricItems, { id: crypto.randomUUID(), criterion: '', maxScore: 0 }]);
@@ -43,19 +45,41 @@ function CreateProblemContent() {
 
   const totalMaxScore = rubricItems.reduce((acc, item) => acc + item.maxScore, 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
+    if (!currentUser) {
+        setError("Bạn phải đăng nhập để tạo bài tập.");
+        return;
+    }
     if (!title.trim() || !prompt.trim()) {
       setError('Tiêu đề và đề bài không được để trống.');
       return;
     }
     setError('');
-    addProblem(title, prompt, rawRubric, rubricItems, Number(customMaxScore), isRubricHidden, examId || undefined);
-    
-    if (examId) {
-      router.push(`/exams/${examId}`);
-    } else {
-      router.push('/dashboard');
+    setIsSubmitting(true);
+
+    try {
+      await createProblem({
+          title,
+          prompt,
+          rawRubric,
+          rubricItems,
+          customMaxScore: Number(customMaxScore),
+          isRubricHidden,
+          createdBy: currentUser.id,
+          examId: examId || undefined,
+      });
+      
+      if (examId) {
+        router.push(`/exams/${examId}`);
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err) {
+      setError("Đã có lỗi xảy ra. Vui lòng thử lại.");
+      setIsSubmitting(false);
     }
   };
   
@@ -282,9 +306,10 @@ function CreateProblemContent() {
           </button>
           <button
             type="submit"
-            className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 transition-colors"
+            disabled={isSubmitting}
+            className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {examId ? 'Thêm câu hỏi' : 'Tạo bài tập'}
+            {isSubmitting ? 'Đang lưu...' : (examId ? 'Thêm câu hỏi' : 'Tạo bài tập')}
           </button>
         </div>
       </form>
@@ -294,7 +319,7 @@ function CreateProblemContent() {
 
 export default function CreateProblemPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="p-8">Loading...</div>}>
             <CreateProblemContent />
         </Suspense>
     )

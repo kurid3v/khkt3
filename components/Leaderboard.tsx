@@ -3,7 +3,8 @@ import type { Submission, User } from '../types';
 
 interface LeaderboardProps {
   submissions: Submission[];
-  users: User[];
+  // FIX: Update the 'users' prop type to accept an array of objects without passwords, aligning with the UserSession type.
+  users: Omit<User, 'password'>[];
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ submissions, users }) => {

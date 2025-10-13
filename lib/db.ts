@@ -1,5 +1,3 @@
-
-
 import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
 import fs from 'fs';
 import path from 'path';

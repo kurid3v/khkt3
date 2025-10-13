@@ -26,7 +26,8 @@ export default function AdminDashboardPage() {
         [submissions]
     );
 
-    const handleEditUserClick = (user: User) => {
+    // FIX: Update the 'user' parameter type to accept an object without a password, matching the type of users from the data context.
+    const handleEditUserClick = (user: Omit<User, 'password'>) => {
         setEditingUser({ id: user.id, role: user.role });
     };
 
