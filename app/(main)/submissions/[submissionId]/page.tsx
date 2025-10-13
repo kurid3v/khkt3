@@ -9,7 +9,16 @@ import SimilarityCheckDisplay from '@/components/SimilarityCheckDisplay';
 
 export default function SubmissionResultPage({ params }: { params: { submissionId: string } }) {
     const router = useRouter();
-    const { submissions, problems, users, currentUser } = useDataContext();
+    const { submissions, problems, users, currentUser, isLoading } = useDataContext();
+
+    if (isLoading) {
+        return (
+            <div className="container mx-auto px-4 py-8 text-center min-h-[calc(100vh-100px)] flex flex-col justify-center items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                <p className="mt-4 text-muted-foreground">Đang tải chi tiết bài nộp...</p>
+            </div>
+        );
+    }
 
     if (!currentUser) return null; // Or a loading spinner
 
