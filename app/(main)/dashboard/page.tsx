@@ -1,19 +1,19 @@
+'use client';
+
 import Link from 'next/link';
-import { getProblems } from '@/lib/data';
-import { getCurrentUser } from '@/lib/session';
+import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
 import BookOpenIcon from '@/components/icons/BookOpenIcon';
 
-interface ProblemCardProps {
+// FIX: Refactored ProblemCard to ProblemCardContent to resolve a TypeScript error with the `key` prop.
+// The component now renders only the inner content, and the Link component with the key is used directly in the `map` function.
+interface ProblemCardContentProps {
     problem: Problem;
 }
 
-function ProblemCard({ problem }: ProblemCardProps) {
+function ProblemCardContent({ problem }: ProblemCardContentProps) {
   return (
-    <Link 
-        href={`/problems/${problem.id}`}
-        className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer border border-border group"
-    >
+    <>
         <div className="flex items-start justify-between">
             <h3 className="text-lg font-bold text-foreground pr-4">{problem.title}</h3>
             <div className="p-2 bg-secondary rounded-md">
@@ -26,14 +26,22 @@ function ProblemCard({ problem }: ProblemCardProps) {
                 Xem chi tiết &rarr;
             </span>
         </div>
-    </Link>
+    </>
   );
 }
 
-export default async function DashboardPage() {
-    const currentUser = await getCurrentUser();
-    const allProblems = await getProblems();
+export default function DashboardPage() {
+    const { currentUser, problems: allProblems, isLoading } = useDataContext();
 
+    if (isLoading) {
+      return (
+        <div className="container mx-auto px-4 py-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
+        </div>
+      );
+    }
+    
     if (!currentUser) return (
       <div className="container mx-auto px-4 py-8 text-center">
         <p>Đang chuyển hướng đến trang đăng nhập...</p>
@@ -76,7 +84,13 @@ export default async function DashboardPage() {
             {displayedProblems.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {displayedProblems.map(problem => (
-                        <ProblemCard key={problem.id} problem={problem} />
+                        <Link 
+                            key={problem.id}
+                            href={`/problems/${problem.id}`}
+                            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer border border-border group"
+                        >
+                            <ProblemCardContent problem={problem} />
+                        </Link>
                     ))}
                 </div>
             ) : (

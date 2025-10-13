@@ -3,10 +3,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import type { User } from '@/types';
 
-// HACK: This is a simplified client-side auth simulation. It mirrors the old DataContext's auth logic
-// but without holding all application data.
-// In a real app, login/signup would likely set a secure cookie that server components could read.
-
 type UserSession = Omit<User, 'password'>;
 
 interface SessionContextType {
@@ -18,16 +14,6 @@ interface SessionContextType {
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
-
-// Dummy users for client-side login simulation since we removed the API calls for it
-const DUMMY_USERS: User[] = [
-  { "id": "user_admin_1", "name": "Admin User", "role": "admin", "password": "admin" },
-  { "id": "user_teacher_1", "name": "Cô giáo Thảo", "role": "teacher", "password": "password123" },
-  { "id": "user_student_1", "name": "Học sinh An", "role": "student", "password": "password123" },
-  { "id": "user_student_2", "name": "Học sinh Bình", "role": "student", "password": "password123" },
-  { "id": "user_student_3", "name": "Học sinh Cường", "role": "student", "password": "password123" }
-];
-
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -48,26 +34,44 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, []);
 
     const login = async (name: string, password: string): Promise<boolean> => {
-        const user = DUMMY_USERS.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase());
-        if (user && user.password === password) {
-            const { password: _, ...userSession } = user;
-            setCurrentUser(userSession);
-            sessionStorage.setItem('currentUser', JSON.stringify(userSession));
-            return true;
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password }),
+            });
+            if (response.ok) {
+                const userSession = await response.json();
+                setCurrentUser(userSession);
+                sessionStorage.setItem('currentUser', JSON.stringify(userSession));
+                return true;
+            }
+        } catch (error) {
+            console.error("Login API call failed:", error);
         }
         return false;
     };
 
     const signUp = async (name: string, role: 'teacher' | 'student', password: string): Promise<{ success: boolean; message?: string }> => {
-        const trimmedName = name.trim();
-        if (DUMMY_USERS.some(u => u.name.toLowerCase() === trimmedName.toLowerCase())) {
-             return { success: false, message: 'Tên người dùng này đã tồn tại.' };
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, role, password }),
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                const { user } = data;
+                setCurrentUser(user);
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                return { success: true };
+            }
+            return { success: false, message: data.message || 'Signup failed' };
+        } catch (error) {
+            console.error("Signup API call failed:", error);
+            return { success: false, message: 'An unexpected error occurred.' };
         }
-        const newUser: UserSession = { id: crypto.randomUUID(), name: trimmedName, role };
-        setCurrentUser(newUser);
-        sessionStorage.setItem('currentUser', JSON.stringify(newUser));
-        // In a real app, this would also persist the new user to the database via a server action.
-        return { success: true };
     };
     
     const logout = () => {
