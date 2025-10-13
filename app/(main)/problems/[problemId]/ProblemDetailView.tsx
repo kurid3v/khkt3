@@ -16,6 +16,59 @@ interface ProblemDetailViewProps {
     teacherName: string;
 }
 
+// Teacher/Admin view of submissions for this problem
+const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<User, 'password'>[] }> = ({ submissions, users }) => {
+    const router = useRouter();
+
+    if (submissions.length === 0) {
+        return (
+            <div className="bg-card p-6 rounded-lg border border-dashed text-center">
+                <p className="text-muted-foreground">Chưa có học sinh nào nộp bài.</p>
+            </div>
+        );
+    }
+
+    const getSimilarityColor = (percentage: number) => {
+        if (percentage > 70) return 'text-destructive';
+        if (percentage > 40) return 'text-orange-500';
+        return 'text-primary';
+    };
+
+    return (
+        <div className="bg-card p-4 rounded-xl shadow-sm border border-border">
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="p-3 text-left text-sm font-semibold text-muted-foreground">Học sinh</th>
+                            <th className="p-3 text-left text-sm font-semibold text-muted-foreground">Ngày nộp</th>
+                            <th className="p-3 text-right text-sm font-semibold text-muted-foreground">Điểm</th>
+                            <th className="p-3 text-right text-sm font-semibold text-muted-foreground">Tương đồng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {submissions.map(sub => {
+                            const submitter = users.find(u => u.id === sub.submitterId);
+                            const similarity = sub.similarityCheck?.similarityPercentage;
+                            return (
+                                <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className="cursor-pointer hover:bg-muted/50 border-b border-border last:border-b-0">
+                                    <td className="p-3 font-semibold text-foreground">{submitter?.name || 'Không rõ'}</td>
+                                    <td className="p-3 text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</td>
+                                    <td className="p-3 font-bold text-primary text-right">{sub.feedback.totalScore.toFixed(2)}</td>
+                                    <td className={`p-3 font-bold text-right ${similarity !== undefined ? getSimilarityColor(similarity) : 'text-muted-foreground'}`}>
+                                        {similarity !== undefined ? `${similarity.toFixed(0)}%` : 'N/A'}
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
 export default function ProblemDetailView({ problem, problemSubmissions, users, currentUser, teacherName }: ProblemDetailViewProps) {
     const router = useRouter();
     
@@ -98,35 +151,43 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                             <h2 className="text-2xl font-bold text-foreground mb-4">
                                 {currentUser.role === 'student' ? 'Nộp bài & Chấm thử' : 'Nộp bài / Chấm thử nghiệm'}
                             </h2>
-                            <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={handleSubmissionComplete} />
+                            <StudentGraderView problem={problem} user={currentUser} onSubmissionComplete={handleSubmissionComplete} problemSubmissions={problemSubmissions} />
                         </div>
                     </div>
 
                     {/* Right Sidebar */}
                     <div className="lg:col-span-1 space-y-8">
-                        <div>
-                            <h2 className="text-2xl font-bold text-foreground mb-4">Lịch sử nộp bài</h2>
-                                {userSubmissions.length > 0 ? (
-                                <div className="space-y-3">
-                                    {userSubmissions.map(sub => (
-                                        <Link 
-                                            key={sub.id} 
-                                            href={`/submissions/${sub.id}`}
-                                            className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50"
-                                        >
-                                            <div className="flex justify-between items-center">
-                                                <p className="text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</p>
-                                                <p className="font-bold text-lg text-primary">{sub.feedback.totalScore.toFixed(2)} điểm</p>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                                ) : (
-                                    <div className="bg-card p-6 rounded-lg border border-dashed text-center">
-                                    <p className="text-muted-foreground">Bạn chưa nộp bài nào.</p>
-                                </div>
-                                )}
-                        </div>
+                        {currentUser.role === 'student' && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-foreground mb-4">Lịch sử nộp bài</h2>
+                                    {userSubmissions.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {userSubmissions.map(sub => (
+                                            <Link 
+                                                key={sub.id} 
+                                                href={`/submissions/${sub.id}`}
+                                                className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</p>
+                                                    <p className="font-bold text-lg text-primary">{sub.feedback.totalScore.toFixed(2)} điểm</p>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                    ) : (
+                                        <div className="bg-card p-6 rounded-lg border border-dashed text-center">
+                                        <p className="text-muted-foreground">Bạn chưa nộp bài nào.</p>
+                                    </div>
+                                    )}
+                            </div>
+                        )}
+                        {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-foreground mb-4">Danh sách bài nộp</h2>
+                                <TeacherSubmissionsView submissions={problemSubmissions} users={users} />
+                            </div>
+                        )}
                          {/* Leaderboard for students remains in the sidebar */}
                         <div>
                            <h2 className="text-2xl font-bold text-foreground mb-4">Bảng xếp hạng</h2>

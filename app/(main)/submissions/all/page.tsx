@@ -25,6 +25,13 @@ export default function AllSubmissionsPage() {
     const thClass = "p-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider";
     const tdClass = "p-3 text-slate-800";
     const trClickableClass = "border-b border-slate-200 cursor-pointer hover:bg-slate-50";
+    
+    const getSimilarityColor = (percentage: number) => {
+        if (percentage > 70) return 'text-destructive';
+        if (percentage > 40) return 'text-orange-500';
+        return 'text-primary';
+    };
+
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -42,7 +49,8 @@ export default function AllSubmissionsPage() {
                                     <tr className="border-b border-slate-200">
                                         <th className={thClass}>Người nộp</th>
                                         <th className={thClass}>Bài tập</th>
-                                        <th className={thClass}>Điểm</th>
+                                        <th className={`${thClass} text-right`}>Điểm</th>
+                                        <th className={`${thClass} text-right`}>Tương đồng</th>
                                         <th className={thClass}>Ngày nộp</th>
                                     </tr>
                                 </thead>
@@ -50,11 +58,15 @@ export default function AllSubmissionsPage() {
                                     {displayedSubmissions.map(sub => {
                                         const submitter = users.find(u => u.id === sub.submitterId);
                                         const problem = problems.find(p => p.id === sub.problemId);
+                                        const similarity = sub.similarityCheck?.similarityPercentage;
                                         return (
                                             <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className={trClickableClass}>
                                                 <td className={`${tdClass} font-semibold`}>{submitter?.name || 'Không rõ'}</td>
                                                 <td className={`${tdClass} text-slate-600`}>{problem?.title || 'Không rõ'}</td>
-                                                <td className={`${tdClass} font-bold text-blue-600`}>{sub.feedback.totalScore.toFixed(2)}</td>
+                                                <td className={`${tdClass} font-bold text-blue-600 text-right`}>{sub.feedback.totalScore.toFixed(2)}</td>
+                                                <td className={`${tdClass} font-bold text-right ${similarity !== undefined ? getSimilarityColor(similarity) : 'text-muted-foreground'}`}>
+                                                    {similarity !== undefined ? `${similarity.toFixed(0)}%` : 'N/A'}
+                                                </td>
                                                 <td className={tdClass}>{new Date(sub.submittedAt).toLocaleString()}</td>
                                             </tr>
                                         )

@@ -18,6 +18,11 @@ export interface Problem {
   isRubricHidden?: boolean;
 }
 
+export interface SimilarityCheckResult {
+  similarityPercentage: number;
+  explanation: string;
+}
+
 export interface Submission {
   id: string;
   problemId: string;
@@ -26,10 +31,11 @@ export interface Submission {
   feedback: Feedback;
   submittedAt: number;
   examId?: string; // ID of the exam this submission belongs to
+  similarityCheck?: SimilarityCheckResult;
 }
 
 export interface Exam {
-  id: string;
+  id:string;
   title: string;
   description: string;
   startTime: number; // Timestamp for when the exam starts

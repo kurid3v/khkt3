@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import FeedbackDisplay from '@/components/FeedbackDisplay';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
+import SimilarityCheckDisplay from '@/components/SimilarityCheckDisplay';
 
 export default function SubmissionResultPage({ params }: { params: { submissionId: string } }) {
     const router = useRouter();
@@ -67,11 +68,16 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 {/* Essay Content */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-4 sticky top-4 bg-white pb-2">Nội dung bài làm</h2>
-                    <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap">
-                        {submission.essay}
+                <div className="space-y-8">
+                    <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+                        <h2 className="text-2xl font-bold text-slate-800 mb-4 sticky top-4 bg-white pb-2">Nội dung bài làm</h2>
+                        <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap">
+                            {submission.essay}
+                        </div>
                     </div>
+                    {submission.similarityCheck && (
+                         <SimilarityCheckDisplay similarityCheck={submission.similarityCheck} />
+                    )}
                 </div>
                 
                 {/* Feedback */}
