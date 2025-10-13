@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Submission, Problem, User } from '@/types';
-import { gradeEssay, checkSimilarity } from '@/services/geminiService';
+import { gradeEssay } from '@/services/geminiService';
 import EssayInput from './EssayInput';
 import FeedbackDisplay from './FeedbackDisplay';
 import LoadingSpinner from './LoadingSpinner';
@@ -11,10 +11,9 @@ interface StudentGraderViewProps {
   problem: Problem;
   user: Omit<User, 'password'>;
   onSubmissionComplete: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => Promise<void>;
-  problemSubmissions: Submission[];
 }
 
-const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, onSubmissionComplete, problemSubmissions }) => {
+const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, onSubmissionComplete }) => {
   const [essay, setEssay] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -40,19 +39,13 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
           String(problem.customMaxScore || '10')
       );
       
-      const existingEssays = problemSubmissions
-        .filter(sub => sub.submitterId !== user.id) // Exclude user's own previous submissions
-        .map(sub => sub.essay);
-        
-      const similarityResult = await checkSimilarity(essay, existingEssays);
-
       const newSubmissionData: Omit<Submission, 'id' | 'submittedAt'> = {
         problemId: problem.id,
         submitterId: user.id,
         essay: essay,
         feedback: result,
         examId: problem.examId,
-        similarityCheck: similarityResult,
+        // Similarity check is now removed from student submission flow
       };
 
       // Use a transition to call the server action, preventing UI blocking

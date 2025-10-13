@@ -21,6 +21,8 @@ export interface Problem {
 export interface SimilarityCheckResult {
   similarityPercentage: number;
   explanation: string;
+  mostSimilarTo?: string; // submissionId
+  mostSimilarToStudentName?: string;
 }
 
 export interface Submission {

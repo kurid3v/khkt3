@@ -91,12 +91,20 @@ export const db = {
             writeData(submissionsPath, store.submissions); // Persist
             return newSubmission;
         },
+        update: (id: string, data: Partial<Submission>) => {
+            const subIndex = store.submissions.findIndex(s => s.id === id);
+            if (subIndex === -1) return null;
+            const updatedSubmission = { ...store.submissions[subIndex], ...data };
+            store.submissions[subIndex] = updatedSubmission;
+            writeData(submissionsPath, store.submissions); // Persist
+            return updatedSubmission;
+        },
     },
     exams: {
          create: (data: Omit<Exam, 'id' | 'createdAt'>) => {
             const newExam: Exam = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
             store.exams.push(newExam);
-            writeData(examsPath, store.exams); // Persist
+writeData(examsPath, store.exams); // Persist
             return newExam;
         },
         delete: (id: string) => {

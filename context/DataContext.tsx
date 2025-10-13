@@ -17,6 +17,7 @@ interface DataContextType {
     updateUserRole: (userId: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
     updateProblem: (updatedProblem: Problem) => Promise<void>;
     addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => Promise<Exam | null>;
+    addSubmissionAndSyncState: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => Promise<Submission | null>;
     startExamAttempt: (examId: string) => Promise<ExamAttempt | null>;
     finishExamAttempt: (attempt: ExamAttempt, newSubmissions: Submission[]) => Promise<void>;
     recordFullscreenExit: (attemptId: string) => Promise<void>;
@@ -56,6 +57,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const addSubmissionAndSyncState = async (submissionData: Omit<Submission, 'id' | 'submittedAt'>): Promise<Submission | null> => {
+        try {
+            const response = await fetch('/api/submissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submissionData),
+            });
+             if (!response.ok) throw new Error('Failed to create submission on server');
+            const newSubmission = await response.json();
+            setSubmissions(prev => [newSubmission, ...prev]);
+            return newSubmission;
+        } catch (error) {
+            console.error("Error adding submission and syncing state:", error);
+            return null;
+        }
+    };
 
     const updateUserRole = async (userId: string, role: 'student' | 'teacher' | 'admin') => {
         try {
@@ -195,6 +213,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateUserRole,
         updateProblem,
         addExam,
+        addSubmissionAndSyncState,
         startExamAttempt,
         finishExamAttempt,
         recordFullscreenExit,
