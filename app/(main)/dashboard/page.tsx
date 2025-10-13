@@ -5,7 +5,7 @@ import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
 import BookOpenIcon from '@/components/icons/BookOpenIcon';
 import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
-import React, { useState, useTransition, useOptimistic } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { deleteProblem } from '@/app/actions';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -81,10 +81,12 @@ export default function DashboardPage() {
         ? teacherProblems 
         : allProblems.filter(p => !p.examId);
   
-    const [optimisticProblems, removeOptimisticProblem] = useOptimistic(
-        displayedProblems,
-        (state, problemId: string) => state.filter(p => p.id !== problemId)
-    );
+    const [optimisticProblems, setOptimisticProblems] = useState(displayedProblems);
+
+    useEffect(() => {
+        setOptimisticProblems(displayedProblems);
+    }, [displayedProblems]);
+
 
     const handleDeleteClick = (problemId: string) => {
         const problem = displayedProblems.find(p => p.id === problemId);
@@ -96,7 +98,9 @@ export default function DashboardPage() {
     const confirmDelete = () => {
         if (problemToDelete) {
             startTransition(() => {
-                removeOptimisticProblem(problemToDelete.id);
+                // Optimistically update the UI before the server action
+                setOptimisticProblems(prevProblems => prevProblems.filter(p => p.id !== problemToDelete.id));
+                // Call server action
                 deleteProblem(problemToDelete.id);
             });
             setProblemToDelete(null);
