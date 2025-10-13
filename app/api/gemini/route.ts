@@ -10,29 +10,41 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
- * Extracts a JSON object or array from a string, ignoring surrounding text.
+ * Extracts a JSON object or array from a string, ignoring surrounding text
+ * and markdown code fences.
  * @param text The string potentially containing JSON.
  * @returns The extracted JSON string, or null if not found.
  */
 function extractJson(text: string | undefined): string | null {
     if (!text) return null;
+
+    // Try to find JSON within markdown code fences (```json ... ``` or ``` ... ```)
+    const markdownMatch = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[2]) {
+        // If found, this is the most reliable source of JSON
+        return markdownMatch[2].trim();
+    }
+
+    // If no markdown fence, fall back to finding the first and last bracket.
+    // This handles cases where the model returns raw JSON without fences.
     const trimmedText = text.trim();
 
-    // Attempt to find object-based JSON (e.g., { ... })
-    let firstBracket = trimmedText.indexOf('{');
-    let lastBracket = trimmedText.lastIndexOf('}');
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-        return trimmedText.substring(firstBracket, lastBracket + 1);
+    // Check for array-based JSON first
+    let firstArrayBracket = trimmedText.indexOf('[');
+    let lastArrayBracket = trimmedText.lastIndexOf(']');
+    if (firstArrayBracket !== -1 && lastArrayBracket !== -1 && lastArrayBracket > firstArrayBracket) {
+        return trimmedText.substring(firstArrayBracket, lastArrayBracket + 1);
+    }
+    
+    // Then check for object-based JSON
+    let firstObjectBracket = trimmedText.indexOf('{');
+    let lastObjectBracket = trimmedText.lastIndexOf('}');
+    if (firstObjectBracket !== -1 && lastObjectBracket !== -1 && lastObjectBracket > firstObjectBracket) {
+        return trimmedText.substring(firstObjectBracket, lastObjectBracket + 1);
     }
 
-    // Attempt to find array-based JSON (e.g., [ ... ])
-    firstBracket = trimmedText.indexOf('[');
-    lastBracket = trimmedText.lastIndexOf(']');
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-        return trimmedText.substring(firstBracket, lastBracket + 1);
-    }
-
-    return null; // Return null if no valid JSON structure is found
+    // If no JSON structure is found, return null
+    return null;
 }
 
 
