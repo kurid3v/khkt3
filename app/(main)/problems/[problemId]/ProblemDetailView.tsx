@@ -67,7 +67,7 @@ const TeacherSubmissionsView: React.FC<{ submissions: Submission[], users: Omit<
                     )}
                 </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-96">
                 <table className="w-full min-w-max">
                     <thead>
                         <tr className="border-b border-border">
@@ -201,7 +201,7 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                             <div>
                                 <h2 className="text-2xl font-bold text-foreground mb-4">Lịch sử nộp bài</h2>
                                     {userSubmissions.length > 0 ? (
-                                    <div className="space-y-3">
+                                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                                         {userSubmissions.map(sub => (
                                             <Link 
                                                 key={sub.id} 
