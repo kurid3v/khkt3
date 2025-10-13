@@ -82,6 +82,19 @@ export const db = {
             store.problems[problemIndex] = updatedProblem;
             writeData(problemsPath, store.problems); // Persist
             return updatedProblem;
+        },
+        delete: (id: string) => {
+            const initialProblemsLength = store.problems.length;
+            const problemExists = store.problems.some(p => p.id === id);
+            if (!problemExists) return false;
+            
+            store.problems = store.problems.filter(p => p.id !== id);
+            store.submissions = store.submissions.filter(s => s.problemId !== id);
+
+            writeData(problemsPath, store.problems);
+            writeData(submissionsPath, store.submissions);
+
+            return store.problems.length < initialProblemsLength;
         }
     },
     submissions: {

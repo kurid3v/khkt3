@@ -23,6 +23,11 @@ export async function createProblem(data: {
   examId?: string;
 }) {
   try {
+    const existingProblem = db.all.problems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase());
+    if (existingProblem) {
+      throw new Error("Tên bài tập đã tồn tại. Vui lòng chọn một tên khác.");
+    }
+
     // Ensure only relevant data for the type is passed
     const problemData = {
         title: data.title,
@@ -50,7 +55,24 @@ export async function createProblem(data: {
     }
   } catch (error) {
     console.error("Failed to create problem:", error);
+    // Rethrow specific error for duplicate title
+    if (error.message.includes("Tên bài tập đã tồn tại")) {
+        throw error;
+    }
     throw new Error("Không thể tạo bài tập.");
+  }
+}
+
+export async function deleteProblem(problemId: string) {
+  try {
+    db.problems.delete(problemId);
+    revalidatePath('/dashboard');
+    revalidatePath('/admin');
+    revalidatePath('/submissions/all');
+    revalidatePath(`/problems/${problemId}`);
+  } catch (error) {
+    console.error("Failed to delete problem:", error);
+    throw new Error("Không thể xóa bài tập.");
   }
 }
 
