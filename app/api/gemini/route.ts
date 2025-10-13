@@ -10,41 +10,65 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
- * Extracts a JSON object or array from a string, ignoring surrounding text
- * and markdown code fences.
+ * Extracts the first valid JSON object or array from a string.
+ * It handles markdown code fences and gracefully ignores any trailing text
+ * that might cause parsing errors.
  * @param text The string potentially containing JSON.
  * @returns The extracted JSON string, or null if not found.
  */
 function extractJson(text: string | undefined): string | null {
     if (!text) return null;
 
-    // Try to find JSON within markdown code fences (```json ... ``` or ``` ... ```)
-    const markdownMatch = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
+    // First, try to find JSON within markdown code fences as it's the most reliable format.
+    const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (markdownMatch && markdownMatch[2]) {
-        // If found, this is the most reliable source of JSON
         return markdownMatch[2].trim();
     }
 
-    // If no markdown fence, fall back to finding the first and last bracket.
-    // This handles cases where the model returns raw JSON without fences.
-    const trimmedText = text.trim();
+    // If no markdown fence is found, locate the first opening brace or bracket.
+    let firstOpenIndex = -1;
+    let openChar = '';
+    let closeChar = '';
 
-    // Check for array-based JSON first
-    let firstArrayBracket = trimmedText.indexOf('[');
-    let lastArrayBracket = trimmedText.lastIndexOf(']');
-    if (firstArrayBracket !== -1 && lastArrayBracket !== -1 && lastArrayBracket > firstArrayBracket) {
-        return trimmedText.substring(firstArrayBracket, lastArrayBracket + 1);
-    }
-    
-    // Then check for object-based JSON
-    let firstObjectBracket = trimmedText.indexOf('{');
-    let lastObjectBracket = trimmedText.lastIndexOf('}');
-    if (firstObjectBracket !== -1 && lastObjectBracket !== -1 && lastObjectBracket > firstObjectBracket) {
-        return trimmedText.substring(firstObjectBracket, lastObjectBracket + 1);
+    const firstBrace = text.indexOf('{');
+    const firstBracket = text.indexOf('[');
+
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+        firstOpenIndex = firstBrace;
+        openChar = '{';
+        closeChar = '}';
+    } else if (firstBracket !== -1) {
+        firstOpenIndex = firstBracket;
+        openChar = '[';
+        closeChar = ']';
+    } else {
+        return null; // No JSON structure found
     }
 
-    // If no JSON structure is found, return null
-    return null;
+    // Traverse the string to find the matching closing character.
+    let depth = 0;
+    for (let i = firstOpenIndex; i < text.length; i++) {
+        if (text[i] === openChar) {
+            depth++;
+        } else if (text[i] === closeChar) {
+            depth--;
+        }
+
+        if (depth === 0) {
+            // Once the depth returns to 0, we've found the end of the first JSON object/array.
+            const potentialJson = text.substring(firstOpenIndex, i + 1);
+            try {
+                // Final validation to ensure the extracted string is valid JSON.
+                JSON.parse(potentialJson);
+                return potentialJson;
+            } catch {
+                // If parsing fails, the structure is invalid, so we return null.
+                return null;
+            }
+        }
+    }
+
+    return null; // No matching closing bracket was found.
 }
 
 
