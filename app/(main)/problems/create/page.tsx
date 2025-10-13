@@ -107,7 +107,7 @@ function CreateProblemForm() {
     router.back();
   };
 
-  const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring transition-all duration-200";
+  const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring";
   const textareaClass = `${inputClass} resize-y`;
   const labelClass = "text-base font-semibold text-foreground";
 
@@ -179,7 +179,7 @@ function CreateProblemForm() {
                         onClick={() => setIsRubricHidden(!isRubricHidden)}
                         className={`${
                         isRubricHidden ? 'bg-primary' : 'bg-input'
-                        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`}
+                        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`}
                         role="switch"
                         aria-checked={isRubricHidden}
                     >
@@ -187,7 +187,7 @@ function CreateProblemForm() {
                         aria-hidden="true"
                         className={`${
                             isRubricHidden ? 'translate-x-5' : 'translate-x-0'
-                        } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                        } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0`}
                         />
                     </button>
                 </div>
@@ -204,7 +204,7 @@ function CreateProblemForm() {
                         type="button"
                         onClick={handleParseRubric}
                         disabled={!rawRubric.trim() || isParsingRubric}
-                        className="px-3 py-1.5 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                        className="px-3 py-1.5 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         {isParsingRubric ? (
                             <>
@@ -266,7 +266,7 @@ function CreateProblemForm() {
                     <button
                         type="button"
                         onClick={() => removeRubricItem(item.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
                         aria-label={`Xóa tiêu chí ${index + 1}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -293,14 +293,14 @@ function CreateProblemForm() {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-6 py-3 bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted transition-colors"
+            className="px-6 py-3 bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted"
           >
             Hủy
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 disabled:opacity-50"
           >
             {isPending ? 'Đang lưu...' : (examId ? 'Thêm câu hỏi' : 'Tạo bài tập')}
           </button>

@@ -20,7 +20,7 @@ const PasswordModal: React.FC<PasswordModalProps> = ({ isOpen, onClose, onSubmit
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-fade-in"
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
       onClick={onClose}
       aria-modal="true"
       role="dialog"
@@ -45,14 +45,14 @@ const PasswordModal: React.FC<PasswordModalProps> = ({ isOpen, onClose, onSubmit
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2.5 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+                className="px-6 py-2.5 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={!password}
-                className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50"
               >
                 Vào thi
               </button>

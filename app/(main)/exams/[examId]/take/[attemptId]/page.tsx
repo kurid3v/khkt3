@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -150,7 +151,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     if (!exam || !attempt || !currentUser) {
         return (
              <div className="fixed inset-0 bg-white flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+                <div className="rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
                 <p className="ml-4 text-slate-600 text-lg">Đang tải phiên làm bài...</p>
             </div>
         )
@@ -163,13 +164,13 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                 <p className="text-xl mt-4 max-w-2xl">Để đảm bảo tính toàn vẹn của kỳ thi, bạn phải làm bài ở chế độ toàn màn hình. Mọi hành vi thoát khỏi chế độ toàn màn hình hoặc chuyển sang cửa sổ khác sẽ được ghi lại.</p>
                 <button
                     onClick={enterFullscreen}
-                    className="mt-8 px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+                    className="mt-8 px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-blue-700"
                 >
                     Vào chế độ toàn màn hình
                 </button>
                  <button
                     onClick={handleExit}
-                    className="mt-4 px-6 py-2 bg-transparent text-slate-300 font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                    className="mt-4 px-6 py-2 bg-transparent text-slate-300 font-semibold rounded-lg hover:bg-slate-800"
                 >
                     Thoát
                 </button>
@@ -180,7 +181,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     if (isSubmitting) {
         return (
             <div className="fixed inset-0 bg-white flex flex-col items-center justify-center text-center p-4">
-                <div className="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500 mb-6"></div>
+                <div className="rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500 mb-6"></div>
                 <h1 className="text-3xl font-bold text-slate-800">Đang nộp bài...</h1>
                 <p className="text-slate-600 mt-2 text-lg">Hệ thống đang chấm điểm các bài làm của bạn. Vui lòng không tắt trình duyệt.</p>
             </div>
@@ -211,7 +212,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                                 <li key={p.id}>
                                     <button 
                                         onClick={() => setActiveProblemId(p.id)}
-                                        className={`w-full text-left p-3 rounded-lg font-semibold transition-colors ${
+                                        className={`w-full text-left p-3 rounded-lg font-semibold ${
                                             activeProblemId === p.id 
                                             ? 'bg-blue-600 text-white' 
                                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -249,13 +250,13 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                 <footer className="flex-shrink-0 mt-6 flex justify-between items-center">
                     <button
                         onClick={() => setIsExitModalOpen(true)}
-                        className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-lg hover:bg-slate-700 transition-colors"
+                        className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-lg hover:bg-slate-700"
                     >
                         Thoát
                     </button>
                     <button
                         onClick={() => setIsSubmitModalOpen(true)}
-                        className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+                        className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700"
                     >
                         Nộp bài và kết thúc
                     </button>

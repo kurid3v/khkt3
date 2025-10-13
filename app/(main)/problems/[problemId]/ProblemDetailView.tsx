@@ -45,7 +45,7 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
     const backButtonText = problem.examId ? 'Quay lại đề thi' : 'Quay lại danh sách';
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
             <Link href={backPath} className="mb-6 text-primary font-semibold hover:underline inline-block">
                 &larr; {backButtonText}
             </Link>
@@ -112,7 +112,7 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                                         <Link 
                                             key={sub.id} 
                                             href={`/submissions/${sub.id}`}
-                                            className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50 transition-all"
+                                            className="w-full text-left block bg-card p-4 rounded-lg shadow-sm border border-border hover:bg-muted/50 hover:border-primary/50"
                                         >
                                             <div className="flex justify-between items-center">
                                                 <p className="text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</p>

@@ -23,7 +23,7 @@ const EssayInput: React.FC<EssayInputProps> = ({
           value={essay}
           onChange={(e) => setEssay(e.target.value)}
           placeholder="Dán bài văn của bạn vào đây..."
-          className="mt-2 w-full h-64 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200 resize-y disabled:bg-slate-100 disabled:cursor-not-allowed"
+          className="mt-2 w-full h-64 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y disabled:bg-slate-100 disabled:cursor-not-allowed"
           disabled={isLoading}
           aria-label="Nội dung bài văn"
           required
@@ -33,7 +33,7 @@ const EssayInput: React.FC<EssayInputProps> = ({
       <button
         onClick={onSubmit}
         disabled={isLoading || !essay.trim()}
-        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
+        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? 'Đang chấm bài...' : 'Chấm bài & Nộp'}
       </button>

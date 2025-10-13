@@ -62,13 +62,13 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
     const status = getExamStatus(exam.startTime, exam.endTime);
     return (
         <div 
-            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all border border-border flex flex-col cursor-pointer relative group"
+            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 border border-border flex flex-col cursor-pointer relative group"
             onClick={() => router.push(`/exams/${exam.id}`)}
         >
             {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
               <button
                 onClick={(e) => handleDeleteClick(e, exam)}
-                className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100"
                 aria-label={`Xóa đề thi ${exam.title}`}
                 title="Xóa đề thi"
               >
@@ -107,7 +107,7 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
   
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="flex justify-between items-center mb-8">
               <h1 className="text-3xl font-bold text-foreground">
                   Danh sách đề thi
@@ -115,7 +115,7 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
               {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                   <button
                       onClick={() => router.push('/exams/create')}
-                      className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors"
+                      className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
                   >
                       + Tạo đề thi mới
                   </button>

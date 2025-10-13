@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
             onClick={() => {
                 setActiveTab(tabName);
             }}
-            className={`px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
+            className={`px-4 py-2 text-sm font-semibold ${
                 activeTab === tabName
                     ? 'border-b-2 border-primary text-primary'
                     : 'text-muted-foreground hover:text-foreground'
@@ -85,10 +85,10 @@ export default function AdminDashboardPage() {
     const thClass = "p-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider";
     const tdClass = "p-3 text-foreground text-sm";
     const trClass = "border-b border-border";
-    const trClickableClass = `${trClass} cursor-pointer hover:bg-muted/50 transition-colors`;
+    const trClickableClass = `${trClass} cursor-pointer hover:bg-muted/50`;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
             <header className="mb-8">
                 <h1 className="text-3xl font-bold text-foreground">Bảng điều khiển quản trị</h1>
                 <p className="text-muted-foreground mt-1">Quản lý toàn bộ dữ liệu của hệ thống.</p>

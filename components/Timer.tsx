@@ -45,7 +45,7 @@ const Timer: React.FC<TimerProps> = ({ expiryTimestamp, onExpire }) => {
   const format = (num: number) => String(num).padStart(2, '0');
 
   return (
-    <div className={`text-2xl font-bold transition-colors ${isEndingSoon ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>
+    <div className={`text-2xl font-bold ${isEndingSoon ? 'text-red-500' : 'text-slate-900'}`}>
       <span>{format(timeLeft.hours)}</span>:
       <span>{format(timeLeft.minutes)}</span>:
       <span>{format(timeLeft.seconds)}</span>

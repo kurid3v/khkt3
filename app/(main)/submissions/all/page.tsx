@@ -24,7 +24,7 @@ export default function AllSubmissionsPage() {
 
     const thClass = "p-3 text-left text-sm font-bold text-slate-600 uppercase tracking-wider";
     const tdClass = "p-3 text-slate-800";
-    const trClickableClass = "border-b border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors";
+    const trClickableClass = "border-b border-slate-200 cursor-pointer hover:bg-slate-50";
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">

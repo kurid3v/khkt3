@@ -26,7 +26,7 @@ export default function LoginPage() {
     }
   };
 
-  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200";
+  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -73,7 +73,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={!name || !password}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Đăng nhập
             </button>

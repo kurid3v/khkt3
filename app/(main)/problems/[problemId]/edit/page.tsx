@@ -110,7 +110,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
         }
     }
 
-    const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200";
+    const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200";
     const textareaClass = `${inputClass} resize-y`;
 
     return (
@@ -179,7 +179,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                             onClick={() => setIsRubricHidden(!isRubricHidden)}
                             className={`${
                             isRubricHidden ? 'bg-blue-600' : 'bg-slate-300'
-                            } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                            } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
                             role="switch"
                             aria-checked={isRubricHidden}
                         >
@@ -187,7 +187,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                             aria-hidden="true"
                             className={`${
                                 isRubricHidden ? 'translate-x-5' : 'translate-x-0'
-                            } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                            } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0`}
                             />
                         </button>
                     </div>
@@ -204,7 +204,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                             type="button"
                             onClick={handleParseRubric}
                             disabled={!rawRubric.trim() || isParsingRubric}
-                            className="px-3 py-1.5 text-sm text-blue-600 font-semibold bg-blue-100 hover:bg-blue-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                            className="px-3 py-1.5 text-sm text-blue-600 font-semibold bg-blue-100 hover:bg-blue-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isParsingRubric ? (
                                 <>
@@ -266,7 +266,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                         <button
                             type="button"
                             onClick={() => removeRubricItem(item.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full"
                             aria-label={`Xóa tiêu chí ${index + 1}`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -293,13 +293,13 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
             <button
                 type="button"
                 onClick={onCancel}
-                className="px-6 py-3 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+                className="px-6 py-3 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300"
             >
                 Hủy
             </button>
             <button
                 type="submit"
-                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"
             >
                 Lưu thay đổi
             </button>

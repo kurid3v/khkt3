@@ -22,7 +22,7 @@ function ProblemCardContent({ problem }: ProblemCardContentProps) {
         </div>
         <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{problem.prompt}</p>
         <div className="text-right mt-4 text-sm font-semibold text-primary">
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+            <span className="inline-block group-hover:translate-x-1 motion-reduce:transform-none">
                 Xem chi tiết &rarr;
             </span>
         </div>
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     if (isLoading) {
       return (
         <div className="container mx-auto px-4 py-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+            <div className="rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
         </div>
       );
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-foreground">
                     {getHeading()}
@@ -73,7 +73,7 @@ export default function DashboardPage() {
                 {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                     <Link href="/problems/create" passHref>
                         <button
-                            className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors"
+                            className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
                         >
                             + Tạo bài tập mới
                         </button>
@@ -87,7 +87,7 @@ export default function DashboardPage() {
                         <Link 
                             key={problem.id}
                             href={`/problems/${problem.id}`}
-                            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer border border-border group"
+                            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer border border-border group"
                         >
                             <ProblemCardContent problem={problem} />
                         </Link>

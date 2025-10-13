@@ -126,7 +126,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
             <div className="inline-flex rounded-md shadow-sm bg-slate-100 p-1" role="group">
                 <button
                     onClick={() => setMonitoringView('student')}
-                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md ${
                         monitoringView === 'student' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 hover:bg-slate-200'
                     }`}
                 >
@@ -134,7 +134,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                 </button>
                 <button
                     onClick={() => setMonitoringView('time')}
-                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md ${
                         monitoringView === 'time' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 hover:bg-slate-200'
                     }`}
                 >
@@ -238,7 +238,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
           <button onClick={() => router.push('/exams')} className="mb-6 text-blue-600 font-semibold hover:underline">
               &larr; Quay lại danh sách đề thi
           </button>
@@ -277,7 +277,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                                   return (
                                       <button
                                           onClick={handleStartExamClick}
-                                          className="w-full px-6 py-4 bg-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                                          className="w-full px-6 py-4 bg-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
                                       >
                                           Tiếp tục làm bài
                                       </button>
@@ -300,7 +300,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                               return (
                                   <button
                                       onClick={handleStartExamClick}
-                                      className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                      className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                   >
                                       Vào thi
                                   </button>
@@ -335,7 +335,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                         {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                             <button
                                 onClick={() => router.push(`/problems/create?examId=${exam.id}`)}
-                                className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                                 + Thêm câu hỏi mới
                             </button>

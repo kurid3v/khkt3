@@ -41,9 +41,9 @@ export default function CreateExamPage() {
     router.push('/exams');
   };
   
-  const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200";
+  const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200";
   const textareaClass = `${inputClass} resize-y`;
-  const dateButtonClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 text-left flex items-center gap-2 hover:border-blue-500 transition-colors duration-200";
+  const dateButtonClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 text-left flex items-center gap-2 hover:border-blue-500";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -126,13 +126,13 @@ export default function CreateExamPage() {
           <button
             type="button"
             onClick={() => router.push('/exams')}
-            className="px-6 py-3 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+            className="px-6 py-3 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300"
           >
             Hủy
           </button>
           <button
             type="submit"
-            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-colors"
+            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700"
           >
             Tạo đề thi & Tiếp tục
           </button>

@@ -29,7 +29,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  const buttonClass = "px-3 py-1.5 text-sm font-semibold border rounded-lg transition-colors duration-200";
+  const buttonClass = "px-3 py-1.5 text-sm font-semibold border rounded-lg";
   const inactiveClass = "bg-white text-slate-700 border-slate-300 hover:bg-slate-100";
   const disabledClass = "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed";
 

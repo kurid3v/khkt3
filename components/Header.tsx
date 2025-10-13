@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
   const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
     const isActive = pathname === href;
     return (
-        <Link href={href} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
+        <Link href={href} className={`px-3 py-2 text-sm font-semibold rounded-md ${
             isActive 
             ? 'text-primary' 
             : 'text-muted-foreground hover:text-foreground'
@@ -71,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
           </div>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted transition-colors"
+            className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted"
           >
             Đăng xuất
           </button>

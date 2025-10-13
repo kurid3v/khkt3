@@ -74,7 +74,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange, onClos
         month === new Date().getMonth() &&
         year === new Date().getFullYear();
 
-      const baseClasses = "w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-colors";
+      const baseClasses = "w-10 h-10 flex items-center justify-center rounded-full cursor-pointer";
       let dayClasses = `${baseClasses} hover:bg-blue-100`;
 
       if (isSelected) {
@@ -104,7 +104,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange, onClos
   const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
         <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -150,7 +150,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange, onClos
                  <button 
                     type="button" 
                     onClick={onClose} 
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"
                  >
                     Xong
                 </button>

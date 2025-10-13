@@ -38,7 +38,7 @@ export default function SignUpPage() {
     }
   };
   
-  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200";
+  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -101,14 +101,14 @@ export default function SignUpPage() {
                 <button
                     type="button"
                     onClick={() => setRole('student')}
-                    className={`w-1/2 py-2 rounded-sm font-semibold transition-colors ${role === 'student' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'student' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                     Học sinh
                 </button>
                 <button
                     type="button"
                     onClick={() => setRole('teacher')}
-                    className={`w-1/2 py-2 rounded-sm font-semibold transition-colors ${role === 'teacher' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'teacher' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                     Giáo viên
                 </button>
@@ -118,7 +118,7 @@ export default function SignUpPage() {
           <div>
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!name || !password || !confirmPassword}
             >
               Đăng ký

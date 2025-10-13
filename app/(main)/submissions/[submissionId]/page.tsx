@@ -31,7 +31,7 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
 
     if (!canView) {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-7xl text-center animate-fade-in flex items-center justify-center min-h-[calc(100vh-100px)]">
+            <div className="container mx-auto px-4 py-8 max-w-7xl text-center flex items-center justify-center min-h-[calc(100vh-100px)]">
                 <div className="bg-white p-12 rounded-2xl shadow-lg border border-slate-200">
                     <div className="mx-auto bg-red-100 rounded-full h-20 w-20 flex items-center justify-center">
                         <LockClosedIcon className="h-10 w-10 text-red-500" />
@@ -40,7 +40,7 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
                     <p className="text-slate-600 mt-2">Bạn không có quyền xem bài nộp này.</p>
                     <button 
                         onClick={onBack} 
-                        className="mt-8 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                        className="mt-8 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"
                     >
                         &larr; Quay lại
                     </button>
@@ -50,7 +50,7 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
     }
     
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
             <button onClick={onBack} className="mb-6 text-blue-600 font-semibold hover:underline">
                 &larr; {backButtonText}
             </button>

@@ -27,7 +27,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
   const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8">
       {/* Total Score with Progress Circle */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-lg">
         <h2 className="text-2xl font-bold text-slate-800 mb-4 text-center">Điểm số tổng kết</h2>
@@ -57,7 +57,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
               r={normalizedRadius}
               cx={radius}
               cy={radius}
-              className={`${scoreColor} transition-all duration-1000 ease-out`}
+              className={`${scoreColor}`}
             />
           </svg>
           <div className="absolute flex flex-col items-center justify-center">
@@ -78,7 +78,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
             Phân tích chi tiết
         </h3>
         {feedback.detailedFeedback.map((item, index) => (
-          <div key={index} className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-blue-300">
+          <div key={index} className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300">
             <div className="flex justify-between items-start mb-2 gap-4">
               <h4 className="font-semibold text-lg text-slate-900 flex-1">{item.criterion}</h4>
               <span className="font-bold text-lg text-blue-600 bg-blue-100 px-3 py-1 rounded-full whitespace-nowrap">
