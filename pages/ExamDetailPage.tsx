@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { User, Exam, Problem, ExamAttempt } from '../types';
 import CalendarIcon from '../components/icons/CalendarIcon';
 import LockClosedIcon from '../components/icons/LockClosedIcon';
 import PasswordModal from '../components/PasswordModal';
 import EyeOffIcon from '../components/icons/EyeOffIcon';
-import ExclamationIcon from '../components/icons/ExclamationIcon'; // New icon
+import ExclamationIcon from '../components/icons/ExclamationIcon';
 
 interface ExamDetailPageProps {
   exam: Exam;
@@ -27,10 +27,8 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
   const now = Date.now();
   const isExamOngoing = now >= exam.startTime && now <= exam.endTime;
   
-  // Find the attempt for THIS specific exam
   const userAttemptForThisExam = examAttempts.find(att => att.examId === exam.id && att.studentId === user.id);
   
-  // Find if the user has ANY ongoing attempt
   const ongoingGlobalAttempt = examAttempts.find(att => att.studentId === user.id && !att.submittedAt);
   const otherOngoingExam = ongoingGlobalAttempt && ongoingGlobalAttempt.examId !== exam.id 
     ? exams.find(e => e.id === ongoingGlobalAttempt.examId) 
@@ -38,7 +36,7 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
 
 
   const handleStartExamClick = () => {
-    if (exam.password) { // Always ask for password if one is set
+    if (exam.password) {
       setIsPasswordModalOpen(true);
     } else {
       onStartExam(exam.id);
@@ -70,63 +68,152 @@ const ExamDetailPage: React.FC<ExamDetailPageProps> = ({ exam, problems, user, u
   );
 
   const MonitoringTab: React.FC = () => {
+    const [monitoringView, setMonitoringView] = useState<'student' | 'time'>('student');
+
+    const allViolations = useMemo(() => {
+        const events: {
+            timestamp: number;
+            studentName: string;
+            type: 'Thoát toàn màn hình' | 'Mất tập trung';
+        }[] = [];
+
+        studentAttempts.forEach(attempt => {
+            const student = users.find(u => u.id === attempt.studentId);
+            if (!student) return;
+
+            attempt.fullscreenExits.forEach(timestamp => {
+                events.push({
+                    timestamp,
+                    studentName: student.name,
+                    type: 'Thoát toàn màn hình'
+                });
+            });
+
+            (attempt.visibilityStateChanges || [])
+                .filter(change => change.state === 'hidden')
+                .forEach(change => {
+                    events.push({
+                        timestamp: change.timestamp,
+                        studentName: student.name,
+                        type: 'Mất tập trung'
+                    });
+                });
+        });
+
+        return events.sort((a, b) => b.timestamp - a.timestamp);
+    }, [studentAttempts, users]);
+
+    const ViewToggle = () => (
+        <div className="flex justify-end mb-4">
+            <div className="inline-flex rounded-md shadow-sm bg-slate-100 p-1" role="group">
+                <button
+                    onClick={() => setMonitoringView('student')}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                        monitoringView === 'student' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                    Theo học sinh
+                </button>
+                <button
+                    onClick={() => setMonitoringView('time')}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                        monitoringView === 'time' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                    Theo thời gian
+                </button>
+            </div>
+        </div>
+    );
+    
+    if (studentAttempts.length === 0) {
+        return (
+            <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
+                <p className="text-center py-8 text-slate-500">Chưa có học sinh nào làm bài thi này.</p>
+            </div>
+        );
+    }
+    
     return (
      <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
-       <div className="overflow-x-auto">
-         <table className="w-full text-left">
-            <thead>
-                <tr className="border-b-2 border-slate-200">
-                    <th className="p-3 font-bold text-slate-600">Học sinh</th>
-                    <th className="p-3 font-bold text-slate-600">Bắt đầu lúc</th>
-                    <th className="p-3 font-bold text-slate-600">Nộp lúc</th>
-                    <th className="p-3 text-center font-bold text-slate-600">Thoát toàn màn hình</th>
-                    <th className="p-3 text-center font-bold text-slate-600">Mất tập trung</th>
-                </tr>
-            </thead>
-            <tbody>
-                {studentAttempts.map(attempt => {
-                    const student = users.find(u => u.id === attempt.studentId);
-                    const hiddenEvents = attempt.visibilityStateChanges?.filter(c => c.state === 'hidden') || [];
-                    const hiddenCount = hiddenEvents.length;
-
-                    return (
-                        <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
-                            <td className="p-3 font-semibold text-slate-800 align-top">{student?.name || 'Không rõ'}</td>
-                            <td className="p-3 text-slate-600 align-top">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
-                            <td className="p-3 text-slate-600 align-top">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
-                            <td className="p-3 text-center align-top">
-                                <div className="flex items-center justify-center gap-1 font-bold text-orange-600 mb-1">
-                                    <EyeOffIcon />
-                                    <span>{attempt.fullscreenExits.length}</span>
-                                </div>
-                                {attempt.fullscreenExits.length > 0 && (
-                                    <div className="text-xs text-slate-500 space-y-0.5">
-                                        {attempt.fullscreenExits.map((ts, index) => (
-                                            <p key={`fs-${index}`}>{new Date(ts).toLocaleTimeString('vi-VN')}</p>
-                                        ))}
-                                    </div>
-                                )}
-                            </td>
-                            <td className="p-3 text-center align-top">
-                                 <div className={`flex items-center justify-center gap-1 font-bold mb-1 ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
-                                    <ExclamationIcon />
-                                    <span>{hiddenCount}</span>
-                                </div>
-                                {hiddenCount > 0 && (
-                                    <div className="text-xs text-slate-500 space-y-0.5">
-                                        {hiddenEvents.map((event, index) => (
-                                            <p key={`vis-${index}`}>{new Date(event.timestamp).toLocaleTimeString('vi-VN')}</p>
-                                        ))}
-                                    </div>
-                                )}
-                            </td>
+        <ViewToggle />
+        <div className="overflow-x-auto">
+            {monitoringView === 'student' ? (
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="border-b-2 border-slate-200">
+                            <th className="p-3 font-bold text-slate-600">Học sinh</th>
+                            <th className="p-3 font-bold text-slate-600">Bắt đầu lúc</th>
+                            <th className="p-3 font-bold text-slate-600">Nộp lúc</th>
+                            <th className="p-3 text-center font-bold text-slate-600">Thoát toàn màn hình</th>
+                            <th className="p-3 text-center font-bold text-slate-600">Mất tập trung</th>
                         </tr>
-                    );
-                })}
-            </tbody>
-         </table>
+                    </thead>
+                    <tbody>
+                        {studentAttempts.map(attempt => {
+                            const student = users.find(u => u.id === attempt.studentId);
+                            const hiddenEvents = attempt.visibilityStateChanges?.filter(c => c.state === 'hidden') || [];
+                            const hiddenCount = hiddenEvents.length;
+                            return (
+                                <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
+                                    <td className="p-3 font-semibold text-slate-800 align-top">{student?.name || 'Không rõ'}</td>
+                                    <td className="p-3 text-slate-600 align-top">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
+                                    <td className="p-3 text-slate-600 align-top">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
+                                    <td className="p-3 text-center align-top">
+                                        <div className="flex items-center justify-center gap-1 font-bold text-orange-600 mb-1">
+                                            <EyeOffIcon />
+                                            <span>{attempt.fullscreenExits.length}</span>
+                                        </div>
+                                        {attempt.fullscreenExits.length > 0 && (
+                                            <div className="text-xs text-slate-500 space-y-0.5">
+                                                {attempt.fullscreenExits.map((ts, index) => (
+                                                    <p key={`fs-${index}`}>{new Date(ts).toLocaleTimeString('vi-VN')}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="p-3 text-center align-top">
+                                        <div className={`flex items-center justify-center gap-1 font-bold mb-1 ${hiddenCount > 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                                            <ExclamationIcon />
+                                            <span>{hiddenCount}</span>
+                                        </div>
+                                        {hiddenCount > 0 && (
+                                            <div className="text-xs text-slate-500 space-y-0.5">
+                                                {hiddenEvents.map((event, index) => (
+                                                    <p key={`vis-${index}`}>{new Date(event.timestamp).toLocaleTimeString('vi-VN')}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            ) : (
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="border-b-2 border-slate-200">
+                            <th className="p-3 font-bold text-slate-600">Thời gian</th>
+                            <th className="p-3 font-bold text-slate-600">Học sinh</th>
+                            <th className="p-3 font-bold text-slate-600">Loại vi phạm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {allViolations.map((violation, index) => (
+                            <tr key={index} className="border-b border-slate-200 hover:bg-slate-50">
+                                <td className="p-3 text-slate-600">{new Date(violation.timestamp).toLocaleString('vi-VN')}</td>
+                                <td className="p-3 font-semibold text-slate-800">{violation.studentName}</td>
+                                <td className={`p-3 font-semibold ${violation.type === 'Mất tập trung' ? 'text-red-600' : 'text-orange-600'}`}>
+                                    {violation.type}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
         </div>
-         {studentAttempts.length === 0 && <p className="text-center py-8 text-slate-500">Chưa có học sinh nào làm bài thi này.</p>}
+        {monitoringView === 'time' && allViolations.length === 0 && <p className="text-center py-8 text-slate-500">Không có vi phạm nào được ghi nhận.</p>}
      </div>
     );
   };

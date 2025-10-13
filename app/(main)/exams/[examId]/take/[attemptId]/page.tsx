@@ -1,9 +1,9 @@
 
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
-import { getExamAttempts } from '@/data/storage';
 import type { ExamAttempt, Submission } from '@/types';
 import Timer from '@/components/Timer';
 import { gradeEssay } from '@/services/geminiService';
@@ -13,24 +13,22 @@ type AnswersState = { [problemId: string]: string };
 
 export default function ExamTakingPage({ params }: { params: { examId: string; attemptId: string } }) {
     const router = useRouter();
-    const { exams, problems, examAttempts: attemptsFromContext, currentUser, recordFullscreenExit, recordVisibilityChange, finishExamAttempt } = useDataContext();
+    const { 
+        exams, 
+        problems, 
+        examAttempts, 
+        currentUser, 
+        recordFullscreenExit, 
+        recordVisibilityChange, 
+        finishExamAttempt 
+    } = useDataContext();
 
-    // RACE CONDITION FIX: Find attempt from context first. If not found, fallback to localStorage.
-    let attempt = attemptsFromContext.find(a => a.id === params.attemptId);
-    if (!attempt) {
-        attempt = getExamAttempts().find(a => a.id === params.attemptId);
-    }
-
+    const attempt = examAttempts.find(a => a.id === params.attemptId);
     const exam = exams.find(e => e.id === params.examId);
-    
-    // FULLSCREEN FIX: State to track fullscreen status
-    const [isFullscreenActive, setIsFullscreenActive] = useState(false);
-    
-    useEffect(() => {
-        // Set initial state on mount
-        setIsFullscreenActive(!!document.fullscreenElement);
-    }, []);
+    const examProblems = problems.filter(p => p.examId === params.examId);
 
+    const [isFullscreenActive, setIsFullscreenActive] = useState(true); // Assume true initially
+    
     const getInitialAnswers = useCallback((): AnswersState => {
       if (!attempt) return {};
       try {
@@ -41,7 +39,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
       }
     }, [attempt]);
     
-    const [activeProblemId, setActiveProblemId] = useState<string>('');
+    const [activeProblemId, setActiveProblemId] = useState<string>(examProblems[0]?.id || '');
     const [answers, setAnswers] = useState<AnswersState>(getInitialAnswers);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExitModalOpen, setIsExitModalOpen] = useState(false);
@@ -49,32 +47,12 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     const attemptRef = useRef(attempt);
 
     useEffect(() => {
-        if(attempt) {
-            attemptRef.current = attempt;
-        }
+        if(attempt) attemptRef.current = attempt;
     }, [attempt]);
 
-    const examProblems = problems.filter(p => p.examId === params.examId);
-
-    useEffect(() => {
-        if(examProblems.length > 0 && !activeProblemId) {
-            setActiveProblemId(examProblems[0].id);
-        }
-    }, [examProblems, activeProblemId]);
-
     useEffect(() => {
         if (attempt) {
-            setAnswers(getInitialAnswers());
-        }
-    }, [attempt, getInitialAnswers]);
-
-    useEffect(() => {
-        if (attempt) {
-            try {
-                localStorage.setItem(`exam_answers_${attempt.id}`, JSON.stringify(answers));
-            } catch (e) {
-                console.error("Failed to save answers to localStorage", e);
-            }
+            localStorage.setItem(`exam_answers_${attempt.id}`, JSON.stringify(answers));
         }
     }, [answers, attempt]);
 
@@ -82,7 +60,6 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         setAnswers(prev => ({ ...prev, [problemId]: text }));
     };
     
-    // --- Anti-Cheating Listeners ---
     const handleFullscreenChange = useCallback(() => {
         const isFullscreen = !!document.fullscreenElement;
         setIsFullscreenActive(isFullscreen);
@@ -98,6 +75,10 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
     }, [recordVisibilityChange]);
     
     useEffect(() => {
+        // Must be in fullscreen to start with
+        if(!document.fullscreenElement) {
+            setIsFullscreenActive(false);
+        }
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -109,8 +90,6 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
             }
         };
     }, [handleFullscreenChange, handleVisibilityChange]);
-    // --- End Anti-Cheating ---
-
 
     const enterFullscreen = () => {
         document.documentElement.requestFullscreen().catch(err => {
@@ -131,6 +110,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         setIsSubmitting(true);
         
         const newSubmissions: Submission[] = [];
+        const submissionTime = Date.now();
         
         for (const problem of examProblems) {
             const essayText = answers[problem.id] || '';
@@ -150,7 +130,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                         submitterId: currentUser.id,
                         essay: essayText,
                         feedback,
-                        submittedAt: Date.now(),
+                        submittedAt: submissionTime,
                         examId: exam.id,
                     });
                 } catch (error) {
@@ -162,7 +142,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
         if (attempt) {
             localStorage.removeItem(`exam_answers_${attempt.id}`);
         }
-        finishExamAttempt(attemptRef.current, newSubmissions);
+        await finishExamAttempt(attemptRef.current, newSubmissions);
         router.replace(`/exams/${exam.id}`);
 
     }, [isSubmitting, examProblems, answers, currentUser, exam, finishExamAttempt, router, attempt]);
@@ -185,7 +165,13 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                     onClick={enterFullscreen}
                     className="mt-8 px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
                 >
-                    Bắt đầu làm bài (Toàn màn hình)
+                    Vào chế độ toàn màn hình
+                </button>
+                 <button
+                    onClick={handleExit}
+                    className="mt-4 px-6 py-2 bg-transparent text-slate-300 font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                    Thoát
                 </button>
             </div>
         );

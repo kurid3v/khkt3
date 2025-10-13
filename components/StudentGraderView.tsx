@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import type { Feedback, Submission, Problem, User } from '@/types';
@@ -10,7 +11,7 @@ import ErrorMessage from './ErrorMessage';
 interface StudentGraderViewProps {
   problem: Problem;
   user: User;
-  onSubmissionComplete: (submission: Submission) => void;
+  onSubmissionComplete: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => void;
 }
 
 const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, onSubmissionComplete }) => {
@@ -36,16 +37,15 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
           String(problem.customMaxScore || '10')
         );
       
-      const newSubmission: Submission = {
-        id: crypto.randomUUID(),
+      const newSubmissionData: Omit<Submission, 'id' | 'submittedAt'> = {
         problemId: problem.id,
         submitterId: user.id,
         essay: essay,
         feedback: result,
-        submittedAt: Date.now(),
+        examId: problem.examId,
       };
       // Let the parent component handle the new submission and navigation
-      onSubmissionComplete(newSubmission);
+      onSubmissionComplete(newSubmissionData);
 
     } catch (e) {
       console.error(e);

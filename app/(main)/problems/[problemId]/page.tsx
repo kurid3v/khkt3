@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -33,10 +34,10 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
 
     const backButtonText = problem.examId ? 'Quay lại đề thi' : 'Quay lại danh sách';
 
-    const handleSubmissionComplete = (submission: Submission) => {
-        addSubmission(submission);
-        if (!submission.examId) {
-             router.push(`/submissions/${submission.id}`);
+    const handleSubmissionComplete = async (newSubmissionData: Omit<Submission, 'id' | 'submittedAt'>) => {
+        const newSubmission = await addSubmission(newSubmissionData);
+        if (newSubmission && !newSubmission.examId) {
+             router.push(`/submissions/${newSubmission.id}`);
         }
     };
     

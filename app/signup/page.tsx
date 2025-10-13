@@ -15,7 +15,8 @@ export default function SignUpPage() {
   const { signUp } = useDataContext();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // FIX: Make handleSubmit async and await the signUp call.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!name.trim()) {
@@ -31,7 +32,7 @@ export default function SignUpPage() {
       return;
     }
     
-    const result = signUp(name, role, password);
+    const result = await signUp(name, role, password);
     if (result.success) {
       router.push('/dashboard');
     } else {

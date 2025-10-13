@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import type { User, Problem, Submission, RubricItem, Exam, ExamAttempt } from '@/types';
-import { getUsers, saveUsers, getProblems, saveProblems, getSubmissions, saveSubmissions, getExams, saveExams, getExamAttempts, saveExamAttempts } from '@/data/storage';
 
+// The new DataContextType reflects the asynchronous nature of API calls.
 interface DataContextType {
     users: User[];
     problems: Problem[];
@@ -12,20 +12,20 @@ interface DataContextType {
     exams: Exam[];
     examAttempts: ExamAttempt[];
     currentUser: User | null;
-    isLoading: boolean;
-    login: (name: string, password: string) => boolean;
-    signUp: (name: string, role: 'teacher' | 'student', password: string) => { success: boolean; message?: string };
+    isLoading: boolean; // Indicates initial data load
+    login: (name: string, password: string) => Promise<boolean>;
+    signUp: (name: string, role: 'teacher' | 'student', password: string) => Promise<{ success: boolean; message?: string }>;
     logout: () => void;
-    addProblem: (title: string, prompt: string, rawRubric: string, rubricItems: RubricItem[], customMaxScore: number, isRubricHidden: boolean, examId?: string) => void;
-    updateProblem: (updatedProblem: Problem) => void;
-    addSubmission: (submission: Submission) => void;
-    addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => void;
-    deleteExam: (examId: string) => void;
-    startExamAttempt: (examId: string) => ExamAttempt | null;
-    finishExamAttempt: (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => void;
-    updateUserRole: (userId: string, role: 'student' | 'teacher' | 'admin') => void;
-    recordFullscreenExit: (attemptId: string) => void;
-    recordVisibilityChange: (attemptId: string) => void;
+    addProblem: (title: string, prompt: string, rawRubric: string, rubricItems: RubricItem[], customMaxScore: number, isRubricHidden: boolean, examId?: string) => Promise<void>;
+    updateProblem: (updatedProblem: Problem) => Promise<void>;
+    addSubmission: (submission: Omit<Submission, 'id' | 'submittedAt'>) => Promise<Submission | null>;
+    addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => Promise<void>;
+    deleteExam: (examId: string) => Promise<void>;
+    startExamAttempt: (examId: string) => Promise<ExamAttempt | null>;
+    finishExamAttempt: (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => Promise<void>;
+    updateUserRole: (userId: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
+    recordFullscreenExit: (attemptId: string) => Promise<void>;
+    recordVisibilityChange: (attemptId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -39,181 +39,216 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Fetch all initial data from the backend API
     useEffect(() => {
-        setUsers(getUsers());
-        setProblems(getProblems());
-        setSubmissions(getSubmissions());
-        setExams(getExams());
-        setExamAttempts(getExamAttempts());
-        
-        const loggedInUser = sessionStorage.getItem('currentUser');
-        if (loggedInUser) {
-            setCurrentUser(JSON.parse(loggedInUser));
-        }
-        setIsLoading(false);
+        const loadInitialData = async () => {
+            try {
+                const response = await fetch('/api/bootstrap');
+                if (!response.ok) throw new Error('Failed to fetch initial data');
+                const data = await response.json();
+                
+                setUsers(data.users);
+                setProblems(data.problems);
+                setSubmissions(data.submissions);
+                setExams(data.exams);
+                setExamAttempts(data.examAttempts);
+
+                const loggedInUserJson = sessionStorage.getItem('currentUser');
+                if (loggedInUserJson) {
+                    setCurrentUser(JSON.parse(loggedInUserJson));
+                }
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadInitialData();
     }, []);
 
-    const login = (name: string, password: string): boolean => {
-        const user = users.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase());
-        if (user && user.password === password) {
-            setCurrentUser(user);
-            sessionStorage.setItem('currentUser', JSON.stringify(user));
-            return true;
+    // --- Authentication ---
+    const login = async (name: string, password: string): Promise<boolean> => {
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password }),
+            });
+            if (response.ok) {
+                const user = await response.json();
+                setCurrentUser(user);
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Login failed:", error);
+            return false;
         }
-        return false;
     };
 
-    const signUp = (name: string, role: 'teacher' | 'student', password: string): { success: boolean; message?: string } => {
-        const trimmedName = name.trim();
-        if (users.some(u => u.name.toLowerCase() === trimmedName.toLowerCase())) {
-            return { success: false, message: 'Tên người dùng này đã tồn tại.' };
+    const signUp = async (name: string, role: 'teacher' | 'student', password: string): Promise<{ success: boolean; message?: string }> => {
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, role, password }),
+            });
+            const result = await response.json();
+            if (response.ok) {
+                const newUser = result.user;
+                setUsers(prev => [...prev, newUser]);
+                setCurrentUser(newUser);
+                sessionStorage.setItem('currentUser', JSON.stringify(newUser));
+                return { success: true };
+            }
+            return { success: false, message: result.message };
+        } catch (error) {
+            console.error("Sign up failed:", error);
+            return { success: false, message: 'An unexpected error occurred.' };
         }
-        
-        const newUser: User = { id: crypto.randomUUID(), name: trimmedName, role, password };
-        setUsers(prevUsers => {
-            const updatedUsers = [...prevUsers, newUser];
-            saveUsers(updatedUsers);
-            return updatedUsers;
-        });
-        setCurrentUser(newUser);
-        sessionStorage.setItem('currentUser', JSON.stringify(newUser));
-        return { success: true };
     };
     
     const logout = () => {
         setCurrentUser(null);
         sessionStorage.removeItem('currentUser');
     };
-
-    const addProblem = (title: string, prompt: string, rawRubric: string, rubricItems: RubricItem[], customMaxScore: number, isRubricHidden: boolean, examId?: string) => {
-        if (!currentUser || currentUser.role === 'student') return;
-        const newProblem: Problem = {
-            id: crypto.randomUUID(), title, prompt, rawRubric, rubricItems, customMaxScore, createdBy: currentUser.id, createdAt: Date.now(), isRubricHidden, examId,
-        };
-        setProblems(prevProblems => {
-            const updatedProblems = [...prevProblems, newProblem];
-            saveProblems(updatedProblems);
-            return updatedProblems;
+    
+    // --- Mutations ---
+    
+    const addProblem = async (title: string, prompt: string, rawRubric: string, rubricItems: RubricItem[], customMaxScore: number, isRubricHidden: boolean, examId?: string) => {
+        if (!currentUser) return;
+        const response = await fetch('/api/problems', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, prompt, rawRubric, rubricItems, customMaxScore, createdBy: currentUser.id, isRubricHidden, examId }),
         });
+        if (response.ok) {
+            const newProblem = await response.json();
+            setProblems(prev => [...prev, newProblem]);
+        }
     };
 
-    const updateProblem = (updatedProblem: Problem) => {
-        setProblems(prevProblems => {
-            const updatedProblems = prevProblems.map(p => p.id === updatedProblem.id ? updatedProblem : p);
-            saveProblems(updatedProblems);
-            return updatedProblems;
+    const updateProblem = async (updatedProblem: Problem) => {
+        const response = await fetch(`/api/problems/${updatedProblem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedProblem),
         });
+        if (response.ok) {
+            const problem = await response.json();
+            setProblems(prev => prev.map(p => p.id === problem.id ? problem : p));
+        }
     };
 
-    const addSubmission = (submission: Submission) => {
-        setSubmissions(prevSubmissions => {
-            const updatedSubmissions = [...prevSubmissions, submission];
-            saveSubmissions(updatedSubmissions);
-            return updatedSubmissions;
+    const addSubmission = async (submissionData: Omit<Submission, 'id' | 'submittedAt'>): Promise<Submission | null> => {
+        const response = await fetch('/api/submissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submissionData),
         });
+        if (response.ok) {
+            const newSubmission = await response.json();
+            setSubmissions(prev => [...prev, newSubmission]);
+            return newSubmission;
+        }
+        return null;
     };
 
-    const addExam = (title: string, description: string, startTime: number, endTime: number, password?: string) => {
-        if (!currentUser || currentUser.role === 'student') return;
-        const newExam: Exam = {
-            id: crypto.randomUUID(), title, description, startTime, endTime, password, createdBy: currentUser.id, createdAt: Date.now(),
-        };
-        setExams(prevExams => {
-            const updatedExams = [...prevExams, newExam];
-            saveExams(updatedExams);
-            return updatedExams;
+    const addExam = async (title: string, description: string, startTime: number, endTime: number, password?: string) => {
+        if (!currentUser) return;
+        const response = await fetch('/api/exams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description, startTime, endTime, password, createdBy: currentUser.id }),
         });
+        if (response.ok) {
+            const newExam = await response.json();
+            setExams(prev => [...prev, newExam]);
+        }
     };
 
-    const deleteExam = (examId: string) => {
-        if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) return;
-        setExams(prevExams => {
-            const updatedExams = prevExams.filter(exam => exam.id !== examId);
-            saveExams(updatedExams);
-            return updatedExams;
-        });
-        setProblems(prevProblems => {
-            const updatedProblems = prevProblems.filter(problem => problem.examId !== examId);
-            saveProblems(updatedProblems);
-            return updatedProblems;
-        });
+    const deleteExam = async (examId: string) => {
+        const response = await fetch(`/api/exams/${examId}`, { method: 'DELETE' });
+        if (response.ok) {
+            setExams(prev => prev.filter(exam => exam.id !== examId));
+            setProblems(prev => prev.filter(p => p.examId !== examId));
+        }
     };
     
-    const startExamAttempt = (examId: string): ExamAttempt | null => {
+    const startExamAttempt = async (examId: string): Promise<ExamAttempt | null> => {
         if (!currentUser) return null;
-        const newAttempt: ExamAttempt = {
-            id: crypto.randomUUID(),
-            examId: examId,
-            studentId: currentUser.id,
-            startedAt: Date.now(),
-            fullscreenExits: [],
-            visibilityStateChanges: [], // Initialize new field
-            submissionIds: [],
-        };
-        setExamAttempts(prevAttempts => {
-            const updatedAttempts = [...prevAttempts, newAttempt];
-            saveExamAttempts(updatedAttempts);
-            return updatedAttempts;
+        const response = await fetch('/api/exam-attempts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ examId, studentId: currentUser.id }),
         });
-        return newAttempt;
-    };
-
-    const recordFullscreenExit = (attemptId: string) => {
-        setExamAttempts(prevAttempts => {
-            const updatedAttempts = prevAttempts.map(att => {
-                if (att.id === attemptId) {
-                    return {
-                        ...att,
-                        fullscreenExits: [...att.fullscreenExits, Date.now()],
-                    };
-                }
-                return att;
-            });
-            saveExamAttempts(updatedAttempts);
-            return updatedAttempts;
-        });
+        if (response.ok) {
+            const newAttempt = await response.json();
+            setExamAttempts(prev => [...prev, newAttempt]);
+            return newAttempt;
+        }
+        return null;
     };
     
-    const recordVisibilityChange = (attemptId: string) => {
-        setExamAttempts(prevAttempts => {
-            const updatedAttempts = prevAttempts.map(att => {
-                if (att.id === attemptId) {
-                    const previousChanges = att.visibilityStateChanges || [];
-                    return {
-                        ...att,
-                        visibilityStateChanges: [
-                            ...previousChanges,
-                            { timestamp: Date.now(), state: 'hidden' as const }
-                        ],
-                    };
-                }
-                return att;
-            });
-            saveExamAttempts(updatedAttempts);
-            return updatedAttempts;
+    const updateExamAttempt = useCallback(async (attemptId: string, updates: Partial<ExamAttempt>) => {
+        const response = await fetch(`/api/exam-attempts/${attemptId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
         });
+        if(response.ok) {
+            const updatedAttempt = await response.json();
+            setExamAttempts(prev => prev.map(att => att.id === attemptId ? updatedAttempt : att));
+        }
+    }, []);
+
+    const finishExamAttempt = async (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => {
+        const updates: Partial<ExamAttempt> = {
+            submittedAt: Date.now(),
+            submissionIds: newSubmissions.map(s => s.id),
+        };
+         // Also add new submissions to the main submissions list
+        if(newSubmissions.length > 0) {
+            setSubmissions(prev => [...prev, ...newSubmissions]);
+        }
+        await updateExamAttempt(finishedAttempt.id, updates);
     };
 
-    const finishExamAttempt = (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => {
-        const finalAttempt: ExamAttempt = { ...finishedAttempt, submittedAt: Date.now(), submissionIds: newSubmissions.map(s => s.id) };
-        setExamAttempts(prevAttempts => {
-            const updatedAttempts = prevAttempts.map(att => att.id === finalAttempt.id ? finalAttempt : att);
-            saveExamAttempts(updatedAttempts);
-            return updatedAttempts;
+    const recordFullscreenExit = useCallback(async (attemptId: string) => {
+        setExamAttempts(prev => {
+            const attempt = prev.find(att => att.id === attemptId);
+            if(attempt) {
+                const newExits = [...attempt.fullscreenExits, Date.now()];
+                updateExamAttempt(attemptId, { fullscreenExits: newExits });
+                return prev.map(att => att.id === attemptId ? {...att, fullscreenExits: newExits} : att);
+            }
+            return prev;
         });
-        setSubmissions(prevSubmissions => {
-            const updatedSubmissions = [...prevSubmissions, ...newSubmissions];
-            saveSubmissions(updatedSubmissions);
-            return updatedSubmissions;
+    }, [updateExamAttempt]);
+    
+    const recordVisibilityChange = useCallback(async (attemptId: string) => {
+        setExamAttempts(prev => {
+            const attempt = prev.find(att => att.id === attemptId);
+             if(attempt) {
+                const newChanges = [...(attempt.visibilityStateChanges || []), { timestamp: Date.now(), state: 'hidden' as const }];
+                updateExamAttempt(attemptId, { visibilityStateChanges: newChanges });
+                return prev.map(att => att.id === attemptId ? {...att, visibilityStateChanges: newChanges} : att);
+            }
+            return prev;
         });
-    };
+    }, [updateExamAttempt]);
 
-    const updateUserRole = (userId: string, role: 'student' | 'teacher' | 'admin') => {
-        setUsers(prevUsers => {
-            const updatedUsers = prevUsers.map(user => user.id === userId ? { ...user, role } : user);
-            saveUsers(updatedUsers);
-            return updatedUsers;
+
+    const updateUserRole = async (userId: string, role: 'student' | 'teacher' | 'admin') => {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role }),
         });
+        if(response.ok) {
+            setUsers(prev => prev.map(user => user.id === userId ? { ...user, role } : user));
+        }
     };
 
     const value: DataContextType = {

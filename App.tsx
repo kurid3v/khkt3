@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { User, Problem, Submission, RubricItem, Exam, ExamAttempt } from './types';
-import { getUsers, saveUsers, getProblems, saveProblems, getSubmissions, saveSubmissions, getExams, saveExams, getExamAttempts, saveExamAttempts } from './data/storage';
+// import { getUsers, saveUsers, getProblems, saveProblems, getSubmissions, saveSubmissions, getExams, saveExams, getExamAttempts, saveExamAttempts } from './data/storage';
 import Header from './components/Header';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
@@ -38,11 +38,11 @@ const App: React.FC = () => {
     const [pageState, setPageState] = useState<PageState>({ name: 'login' });
 
     useEffect(() => {
-        setUsers(getUsers());
-        setProblems(getProblems());
-        setSubmissions(getSubmissions());
-        setExams(getExams());
-        setExamAttempts(getExamAttempts());
+        // setUsers(getUsers());
+        // setProblems(getProblems());
+        // setSubmissions(getSubmissions());
+        // setExams(getExams());
+        // setExamAttempts(getExamAttempts());
     }, []);
 
     const handleLogin = (name: string, password: string): boolean => {
@@ -69,7 +69,7 @@ const App: React.FC = () => {
         };
         const updatedUsers = [...users, newUser];
         setUsers(updatedUsers);
-        saveUsers(updatedUsers);
+        // saveUsers(updatedUsers);
         setCurrentUser(newUser);
         setPageState({ name: 'dashboard' });
         return { success: true };
@@ -104,7 +104,7 @@ const App: React.FC = () => {
         };
         const updatedProblems = [...problems, newProblem];
         setProblems(updatedProblems);
-        saveProblems(updatedProblems);
+        // saveProblems(updatedProblems);
         if (examId) {
             setPageState({ name: 'exam_detail', examId });
         } else {
@@ -115,7 +115,7 @@ const App: React.FC = () => {
     const handleAddSubmission = (submission: Submission) => {
         const updatedSubmissions = [...submissions, submission];
         setSubmissions(updatedSubmissions);
-        saveSubmissions(updatedSubmissions);
+        // saveSubmissions(updatedSubmissions);
         // If not an exam submission, navigate to result page. Exam submissions are handled in bulk.
         if (!submission.examId) {
             setPageState({ name: 'submission_result', submissionId: submission.id });
@@ -136,7 +136,7 @@ const App: React.FC = () => {
         };
         const updatedExams = [...exams, newExam];
         setExams(updatedExams);
-        saveExams(updatedExams);
+        // saveExams(updatedExams);
         setPageState({ name: 'exams_dashboard' });
     };
 
@@ -144,10 +144,10 @@ const App: React.FC = () => {
         if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) return;
         const updatedExams = exams.filter(exam => exam.id !== examId);
         setExams(updatedExams);
-        saveExams(updatedExams);
+        // saveExams(updatedExams);
         const updatedProblems = problems.filter(problem => problem.examId !== examId);
         setProblems(updatedProblems);
-        saveProblems(updatedProblems);
+        // saveProblems(updatedProblems);
     };
     
     const handleStartExamAttempt = (examId: string) => {
@@ -171,7 +171,7 @@ const App: React.FC = () => {
             };
             const updatedAttempts = [...examAttempts, newAttempt];
             setExamAttempts(updatedAttempts);
-            saveExamAttempts(updatedAttempts);
+            // saveExamAttempts(updatedAttempts);
             setPageState({ name: 'exam_taking', examId: examId, attemptId: newAttempt.id });
         }
     };
@@ -179,7 +179,7 @@ const App: React.FC = () => {
     const handleUpdateExamAttempt = (updatedAttempt: ExamAttempt) => {
         const updatedAttempts = examAttempts.map(att => att.id === updatedAttempt.id ? updatedAttempt : att);
         setExamAttempts(updatedAttempts);
-        saveExamAttempts(updatedAttempts);
+        // saveExamAttempts(updatedAttempts);
     };
 
     const handleFinishExamAttempt = (finishedAttempt: ExamAttempt, newSubmissions: Submission[]) => {
@@ -194,7 +194,7 @@ const App: React.FC = () => {
         // Add all new submissions at once
         const updatedSubmissions = [...submissions, ...newSubmissions];
         setSubmissions(updatedSubmissions);
-        saveSubmissions(updatedSubmissions);
+        // saveSubmissions(updatedSubmissions);
 
         // Navigate back to the exam detail page
         setPageState({ name: 'exam_detail', examId: finishedAttempt.examId });
@@ -210,7 +210,7 @@ const App: React.FC = () => {
             user.id === userId ? { ...user, role } : user
         );
         setUsers(updatedUsers);
-        saveUsers(updatedUsers);
+        // saveUsers(updatedUsers);
     };
 
     const handleUpdateProblem = (updatedProblem: Problem) => {
@@ -218,7 +218,7 @@ const App: React.FC = () => {
             problem.id === updatedProblem.id ? updatedProblem : problem
         );
         setProblems(updatedProblems);
-        saveProblems(updatedProblems);
+        // saveProblems(updatedProblems);
         if (updatedProblem.examId) {
             setPageState({ name: 'exam_detail', examId: updatedProblem.examId });
         } else {
