@@ -11,6 +11,7 @@ import { useDataContext } from '@/context/DataContext';
 import { deleteProblem } from '@/app/actions';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import PencilIcon from '@/components/icons/PencilIcon';
 
 interface ProblemDetailViewProps {
     problem: Problem;
@@ -126,6 +127,13 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                 <header className="mb-10 p-6 bg-card rounded-xl shadow-sm border border-border relative">
                     {canEditOrDelete && (
                         <div className="absolute top-4 right-4 flex gap-2">
+                            <button
+                                onClick={() => router.push(`/problems/${problem.id}/edit`)}
+                                className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted flex items-center gap-2"
+                                disabled={isPending}
+                            >
+                                <PencilIcon className="h-5 w-5" /> Sửa
+                            </button>
                             <button
                                 onClick={() => setIsDeleteModalOpen(true)}
                                 className="px-4 py-2 text-sm bg-destructive/10 text-destructive font-semibold rounded-md hover:bg-destructive/20 flex items-center gap-2 disabled:opacity-50"

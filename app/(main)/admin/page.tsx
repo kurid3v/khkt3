@@ -199,7 +199,7 @@ export default function AdminDashboardPage() {
                                                         <td className={tdClass}>{creator?.name || 'Không rõ'}</td>
                                                         <td className={tdClass}>{new Date(problem.createdAt).toLocaleDateString()}</td>
                                                         <td className={`${tdClass} flex items-center gap-2`}>
-                                                            <button onClick={() => router.push(`/problems/${problem.id}/edit`)} className="p-2 text-muted-foreground hover:text-primary" title="Chỉnh sửa"><PencilIcon /></button>
+                                                            <button onClick={() => router.push(`/problems/${problem.id}/edit`)} className="p-2 text-muted-foreground hover:text-primary" title="Chỉnh sửa"><PencilIcon className="h-5 w-5" /></button>
                                                             <button onClick={() => handleDeleteProblemClick(problem)} className="p-2 text-muted-foreground hover:text-destructive" title="Xóa"><TrashIcon /></button>
                                                         </td>
                                                     </tr>
