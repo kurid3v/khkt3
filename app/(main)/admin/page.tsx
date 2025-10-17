@@ -1,5 +1,6 @@
+
 'use client';
-import React, { useState, useMemo, useTransition } from 'react';
+import React, { useState, useMemo, useTransition, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
@@ -27,6 +28,11 @@ export default function AdminDashboardPage() {
     });
     const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
     const [isPending, startTransition] = useTransition();
+
+    const [optimisticProblems, setOptimisticProblems] = useOptimistic(
+        problems,
+        (state, problemId: string) => state.filter(p => p.id !== problemId)
+    );
 
     const sortedSubmissions = useMemo(() => 
         [...submissions].sort((a, b) => b.submittedAt - a.submittedAt),
@@ -60,8 +66,9 @@ export default function AdminDashboardPage() {
 
     const confirmDeleteProblem = () => {
         if (problemToDelete) {
-            startTransition(() => {
-                deleteProblem(problemToDelete.id);
+            startTransition(async () => {
+                setOptimisticProblems(problemToDelete.id);
+                await deleteProblem(problemToDelete.id);
             });
             setProblemToDelete(null);
         }
@@ -76,9 +83,9 @@ export default function AdminDashboardPage() {
     const usersStartIndex = (currentPages.users - 1) * ITEMS_PER_PAGE;
     const displayedUsers = users.slice(usersStartIndex, usersStartIndex + ITEMS_PER_PAGE);
 
-    const problemsTotalPages = Math.ceil(problems.length / ITEMS_PER_PAGE);
+    const problemsTotalPages = Math.ceil(optimisticProblems.length / ITEMS_PER_PAGE);
     const problemsStartIndex = (currentPages.problems - 1) * ITEMS_PER_PAGE;
-    const displayedProblems = problems.slice(problemsStartIndex, problemsStartIndex + ITEMS_PER_PAGE);
+    const displayedProblems = optimisticProblems.slice(problemsStartIndex, problemsStartIndex + ITEMS_PER_PAGE);
     
     const submissionsTotalPages = Math.ceil(sortedSubmissions.length / ITEMS_PER_PAGE);
     const submissionsStartIndex = (currentPages.submissions - 1) * ITEMS_PER_PAGE;
@@ -212,7 +219,7 @@ export default function AdminDashboardPage() {
                                     currentPage={currentPages.problems}
                                     totalPages={problemsTotalPages}
                                     onPageChange={(page) => handlePageChange('problems', page)}
-                                    totalItems={problems.length}
+                                    totalItems={optimisticProblems.length}
                                     itemsPerPage={ITEMS_PER_PAGE}
                                 />
                             </>
