@@ -5,12 +5,12 @@ import type { User } from '@/types';
 
 export async function POST(req: Request) {
   try {
-    const { name, password } = await req.json();
-    if (!name || !password) {
-      return new NextResponse('Missing name or password', { status: 400 });
+    const { username, password } = await req.json();
+    if (!username || !password) {
+      return new NextResponse('Missing username or password', { status: 400 });
     }
 
-    const user = db.users.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const user = db.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
 
     if (user && user.password === password) {
       // In a real app, you'd generate a JWT here.

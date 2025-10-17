@@ -1,13 +1,14 @@
 import React from 'react';
-import type { Feedback } from '../types';
+import type { Feedback, Problem } from '../types';
 import LightBulbIcon from './icons/LightBulbIcon';
 import PencilIcon from './icons/PencilIcon';
 
 interface FeedbackDisplayProps {
   feedback: Feedback;
+  problem?: Problem;
 }
 
-const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
+const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback, problem }) => {
   const finalMaxScore = feedback.maxScore > 0 ? feedback.maxScore : 10;
   const percentage = finalMaxScore > 0 ? (feedback.totalScore / finalMaxScore) * 100 : 0;
   const clampedPercentage = Math.max(0, Math.min(percentage, 100));
@@ -57,7 +58,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
               r={normalizedRadius}
               cx={radius}
               cy={radius}
-              className={`${scoreColor}`}
+              className={`${scoreColor} transition-all duration-500 ease-out`}
             />
           </svg>
           <div className="absolute flex flex-col items-center justify-center">
@@ -77,17 +78,41 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ feedback }) => {
             <PencilIcon />
             Phân tích chi tiết
         </h3>
-        {feedback.detailedFeedback.map((item, index) => (
-          <div key={index} className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300">
-            <div className="flex justify-between items-start mb-2 gap-4">
-              <h4 className="font-semibold text-lg text-slate-900 flex-1">{item.criterion}</h4>
-              <span className="font-bold text-lg text-blue-600 bg-blue-100 px-3 py-1 rounded-full whitespace-nowrap">
-                {item.score.toFixed(2).replace(/\.00$/, '')} điểm
-              </span>
+        {feedback.detailedFeedback.map((item, index) => {
+          let itemMaxScore = 0;
+          if (problem?.type === 'essay' && problem.rubricItems && problem.rubricItems.length > 0) {
+            const rubricItem = problem.rubricItems.find(r => r.criterion === item.criterion);
+            itemMaxScore = rubricItem?.maxScore ?? 0;
+          } else if (problem?.type === 'reading_comprehension') {
+            itemMaxScore = 1; // Assume each question is worth 1 point
+          }
+
+          const itemPercentage = itemMaxScore > 0 ? (item.score / itemMaxScore) * 100 : -1;
+          
+          let borderColorClass = 'border-slate-200';
+          if (itemPercentage !== -1) {
+            if (itemPercentage >= 80) {
+              borderColorClass = 'border-green-400';
+            } else if (itemPercentage >= 50) {
+              borderColorClass = 'border-yellow-400';
+            } else {
+              borderColorClass = 'border-red-400';
+            }
+          }
+
+          return (
+            <div key={index} className={`bg-white p-5 rounded-lg border border-l-4 shadow-sm hover:shadow-md transition-shadow ${borderColorClass}`}>
+                <div className="flex justify-between items-start mb-2 gap-4">
+                <h4 className="font-semibold text-lg text-slate-900 flex-1">{item.criterion}</h4>
+                <span className="font-bold text-lg text-blue-600 bg-blue-100 px-3 py-1 rounded-full whitespace-nowrap">
+                    {item.score.toFixed(2).replace(/\.00$/, '')}
+                    {itemMaxScore > 0 && ` / ${itemMaxScore.toFixed(2).replace(/\.00$/, '')}`} điểm
+                </span>
+                </div>
+                <p className="text-slate-700 leading-relaxed">{item.feedback}</p>
             </div>
-            <p className="text-slate-700 leading-relaxed">{item.feedback}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* General Suggestions */}

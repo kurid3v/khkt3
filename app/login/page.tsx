@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
 
 export default function LoginPage() {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { login } = useSession();
@@ -14,11 +15,11 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!name.trim() || !password) {
+    if (!username.trim() || !password) {
         setError("Vui lòng nhập tên đăng nhập và mật khẩu.");
         return;
     }
-    const success = await login(name, password);
+    const success = await login(username, password);
     if (success) {
       router.push('/dashboard');
     } else {
@@ -40,15 +41,15 @@ export default function LoginPage() {
           {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
           
           <div>
-            <label htmlFor="name-input" className="block text-foreground text-sm font-semibold mb-2">
+            <label htmlFor="username-input" className="block text-foreground text-sm font-semibold mb-2">
               Tên đăng nhập
             </label>
             <input
-              id="name-input"
+              id="username-input"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ví dụ: Hoc sinh An"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="ví dụ: hocsinhan"
               className={inputClasses}
               required
             />
@@ -72,7 +73,7 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={!name || !password}
+              disabled={!username || !password}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Đăng nhập

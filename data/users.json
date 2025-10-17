@@ -1,8 +1,8 @@
 
 [
-  { "id": "user_admin_1", "name": "Admin User", "role": "admin", "password": "admin" },
-  { "id": "user_teacher_1", "name": "Cô giáo Thảo", "role": "teacher", "password": "password123" },
-  { "id": "user_student_1", "name": "Học sinh An", "role": "student", "password": "password123" },
-  { "id": "user_student_2", "name": "Học sinh Bình", "role": "student", "password": "password123" },
-  { "id": "user_student_3", "name": "Học sinh Cường", "role": "student", "password": "password123" }
+  { "id": "user_admin_1", "username": "admin", "displayName": "Admin User", "role": "admin", "password": "admin" },
+  { "id": "user_teacher_1", "username": "cothaothao", "displayName": "Cô giáo Thảo", "role": "teacher", "password": "password123" },
+  { "id": "user_student_1", "username": "hocsinhan", "displayName": "Học sinh An", "role": "student", "password": "password123" },
+  { "id": "user_student_2", "username": "hocsinhbinh", "displayName": "Học sinh Bình", "role": "student", "password": "password123" },
+  { "id": "user_student_3", "username": "hocsinhcuong", "displayName": "Học sinh Cường", "role": "student", "password": "password123" }
 ]

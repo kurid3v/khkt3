@@ -1,3 +1,4 @@
+
 import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
 import fs from 'fs';
 import path from 'path';
@@ -122,11 +123,31 @@ writeData(examsPath, store.exams); // Persist
         },
         delete: (id: string) => {
             const initialLength = store.exams.length;
-            store.exams = store.exams.filter(e => e.id !== id);
-            // Also delete associated problems
+            const examExists = store.exams.some(e => e.id === id);
+            if (!examExists) return false;
+        
+            // Find problems associated with the exam
+            const problemsToDelete = store.problems.filter(p => p.examId === id);
+            const problemIdsToDelete = problemsToDelete.map(p => p.id);
+        
+            // Delete submissions associated with those problems
+            store.submissions = store.submissions.filter(s => !problemIdsToDelete.includes(s.problemId));
+        
+            // Delete exam attempts for this exam
+            store.examAttempts = store.examAttempts.filter(att => att.examId !== id);
+        
+            // Delete the problems
             store.problems = store.problems.filter(p => p.examId !== id);
-            writeData(examsPath, store.exams); // Persist exams
-            writeData(problemsPath, store.problems); // Persist problems
+        
+            // Delete the exam
+            store.exams = store.exams.filter(e => e.id !== id);
+        
+            // Persist all changes
+            writeData(examsPath, store.exams);
+            writeData(problemsPath, store.problems);
+            writeData(submissionsPath, store.submissions);
+            writeData(examAttemptsPath, store.examAttempts);
+        
             return store.exams.length < initialLength;
         }
     },

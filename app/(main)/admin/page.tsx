@@ -1,23 +1,26 @@
 
+
 'use client';
 import React, { useState, useMemo, useTransition, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
 import Pagination from '@/components/Pagination';
-import type { User, Problem } from '@/types';
+import type { User, Problem, Exam } from '@/types';
 import PencilIcon from '@/components/icons/PencilIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { deleteProblem } from '@/app/actions';
+import { removeExam } from '@/app/actions';
 
-type ActiveTab = 'users' | 'problems' | 'submissions';
+
+type ActiveTab = 'users' | 'problems' | 'submissions' | 'exams';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function AdminDashboardPage() {
     const router = useRouter();
-    const { users, problems, submissions, updateUserRole } = useDataContext();
+    const { users, problems, submissions, exams, updateUserRole } = useDataContext();
 
     const [activeTab, setActiveTab] = useState<ActiveTab>('users');
     const [editingUser, setEditingUser] = useState<{ id: string; role: 'teacher' | 'student' | 'admin' } | null>(null);
@@ -25,13 +28,20 @@ export default function AdminDashboardPage() {
         users: 1,
         problems: 1,
         submissions: 1,
+        exams: 1,
     });
     const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
+    const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
     const [isPending, startTransition] = useTransition();
 
     const [optimisticProblems, setOptimisticProblems] = useOptimistic(
         problems,
         (state, problemId: string) => state.filter(p => p.id !== problemId)
+    );
+    
+    const [optimisticExams, setOptimisticExams] = useOptimistic(
+        exams,
+        (state, examId: string) => state.filter(e => e.id !== examId)
     );
 
     const sortedSubmissions = useMemo(() => 
@@ -74,6 +84,20 @@ export default function AdminDashboardPage() {
         }
     };
     
+    const handleDeleteExamClick = (exam: Exam) => {
+        setExamToDelete(exam);
+    };
+
+    const confirmDeleteExam = () => {
+        if (examToDelete) {
+            startTransition(async () => {
+                setOptimisticExams(examToDelete.id);
+                await removeExam(examToDelete.id);
+            });
+            setExamToDelete(null);
+        }
+    };
+    
     const handlePageChange = (tab: ActiveTab, page: number) => {
         setCurrentPages(prev => ({ ...prev, [tab]: page }));
     };
@@ -90,6 +114,10 @@ export default function AdminDashboardPage() {
     const submissionsTotalPages = Math.ceil(sortedSubmissions.length / ITEMS_PER_PAGE);
     const submissionsStartIndex = (currentPages.submissions - 1) * ITEMS_PER_PAGE;
     const displayedSubmissions = sortedSubmissions.slice(submissionsStartIndex, submissionsStartIndex + ITEMS_PER_PAGE);
+
+    const examsTotalPages = Math.ceil(optimisticExams.length / ITEMS_PER_PAGE);
+    const examsStartIndex = (currentPages.exams - 1) * ITEMS_PER_PAGE;
+    const displayedExams = optimisticExams.slice(examsStartIndex, examsStartIndex + ITEMS_PER_PAGE);
 
 
     const TabButton: React.FC<{ tabName: ActiveTab; label: string; count: number }> = ({ tabName, label, count }) => (
@@ -125,6 +153,7 @@ export default function AdminDashboardPage() {
                     <div className="flex border-b border-border mb-6">
                         <TabButton tabName="users" label="Người dùng" count={users.length} />
                         <TabButton tabName="problems" label="Bài tập" count={problems.length} />
+                        <TabButton tabName="exams" label="Đề thi" count={exams.length} />
                         <TabButton tabName="submissions" label="Bài nộp" count={submissions.length} />
                     </div>
 
@@ -135,7 +164,8 @@ export default function AdminDashboardPage() {
                                     <table className="w-full">
                                         <thead>
                                             <tr className={trClass}>
-                                                <th className={thClass}>Tên người dùng</th>
+                                                <th className={thClass}>Tên hiển thị</th>
+                                                <th className={thClass}>Tên đăng nhập</th>
                                                 <th className={thClass}>Vai trò</th>
                                                 <th className={thClass}>Hành động</th>
                                             </tr>
@@ -143,7 +173,8 @@ export default function AdminDashboardPage() {
                                         <tbody>
                                             {displayedUsers.map((user, index) => (
                                                 <tr key={user.id} className={`${trClass} ${index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30'}`}>
-                                                    <td className={`${tdClass} font-semibold`}>{user.name}</td>
+                                                    <td className={`${tdClass} font-semibold`}>{user.displayName}</td>
+                                                    <td className={`${tdClass}`}>{user.username}</td>
                                                     <td className={tdClass}>
                                                         {editingUser?.id === user.id ? (
                                                             <select
@@ -203,7 +234,7 @@ export default function AdminDashboardPage() {
                                                         <td className={`${tdClass} font-semibold`}>
                                                             <Link href={`/problems/${problem.id}`} className="hover:underline">{problem.title}</Link>
                                                         </td>
-                                                        <td className={tdClass}>{creator?.name || 'Không rõ'}</td>
+                                                        <td className={tdClass}>{creator?.displayName || 'Không rõ'}</td>
                                                         <td className={tdClass}>{new Date(problem.createdAt).toLocaleDateString()}</td>
                                                         <td className={`${tdClass} flex items-center gap-2`}>
                                                             <button onClick={() => router.push(`/problems/${problem.id}/edit`)} className="p-2 text-muted-foreground hover:text-primary" title="Chỉnh sửa"><PencilIcon className="h-5 w-5" /></button>
@@ -220,6 +251,46 @@ export default function AdminDashboardPage() {
                                     totalPages={problemsTotalPages}
                                     onPageChange={(page) => handlePageChange('problems', page)}
                                     totalItems={optimisticProblems.length}
+                                    itemsPerPage={ITEMS_PER_PAGE}
+                                />
+                            </>
+                        )}
+                         {activeTab === 'exams' && (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className={trClass}>
+                                                <th className={thClass}>Tên đề thi</th>
+                                                <th className={thClass}>Người tạo</th>
+                                                <th className={thClass}>Thời gian</th>
+                                                <th className={thClass}>Hành động</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {displayedExams.map(exam => {
+                                                const creator = users.find(u => u.id === exam.createdBy);
+                                                return (
+                                                    <tr key={exam.id} className={`${trClass} hover:bg-muted/50`}>
+                                                        <td className={`${tdClass} font-semibold`}>
+                                                            <Link href={`/exams/${exam.id}`} className="hover:underline">{exam.title}</Link>
+                                                        </td>
+                                                        <td className={tdClass}>{creator?.displayName || 'Không rõ'}</td>
+                                                        <td className={tdClass}>{new Date(exam.startTime).toLocaleString()} - {new Date(exam.endTime).toLocaleString()}</td>
+                                                        <td className={`${tdClass} flex items-center gap-2`}>
+                                                            <button onClick={() => handleDeleteExamClick(exam)} className="p-2 text-muted-foreground hover:text-destructive" title="Xóa"><TrashIcon /></button>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pagination
+                                    currentPage={currentPages.exams}
+                                    totalPages={examsTotalPages}
+                                    onPageChange={(page) => handlePageChange('exams', page)}
+                                    totalItems={optimisticExams.length}
                                     itemsPerPage={ITEMS_PER_PAGE}
                                 />
                             </>
@@ -242,7 +313,7 @@ export default function AdminDashboardPage() {
                                                 const problem = problems.find(p => p.id === sub.problemId);
                                                 return (
                                                     <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className={`${trClass} cursor-pointer hover:bg-muted/50`}>
-                                                        <td className={`${tdClass} font-semibold`}>{submitter?.name || 'Không rõ'}</td>
+                                                        <td className={`${tdClass} font-semibold`}>{submitter?.displayName || 'Không rõ'}</td>
                                                         <td className={`${tdClass} text-muted-foreground`}>{problem?.title || 'Không rõ'}</td>
                                                         <td className={`${tdClass} font-bold text-primary text-right`}>{sub.feedback.totalScore.toFixed(2)}</td>
                                                         <td className={tdClass}>{new Date(sub.submittedAt).toLocaleString()}</td>
@@ -270,6 +341,13 @@ export default function AdminDashboardPage() {
                 onConfirm={confirmDeleteProblem}
                 title="Xác nhận xóa bài tập"
                 message={`Bạn có chắc chắn muốn xóa bài tập "${problemToDelete?.title}" không? Hành động này sẽ xóa vĩnh viễn tất cả các bài nộp liên quan.`}
+            />
+            <ConfirmationModal
+                isOpen={!!examToDelete}
+                onClose={() => setExamToDelete(null)}
+                onConfirm={confirmDeleteExam}
+                title="Xác nhận xóa đề thi"
+                message={`Bạn có chắc chắn muốn xóa đề thi "${examToDelete?.title}" không? Hành động này sẽ xóa vĩnh viễn TẤT CẢ các câu hỏi và bài nộp liên quan.`}
             />
         </>
     );

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useDataContext } from '@/context/DataContext';
@@ -34,7 +35,7 @@ export default function ProblemDetailPage({ params }: { params: { problemId: str
             problemSubmissions={problemSubmissions}
             users={users}
             currentUser={currentUser}
-            teacherName={teacher?.name || 'Không rõ'}
+            teacherName={teacher?.displayName || 'Không rõ'}
         />
     );
 };

@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -102,7 +103,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
             attempt.fullscreenExits.forEach(timestamp => {
                 events.push({
                     timestamp,
-                    studentName: student.name,
+                    studentName: student.displayName,
                     type: 'Thoát toàn màn hình'
                 });
             });
@@ -112,7 +113,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                 .forEach(change => {
                     events.push({
                         timestamp: change.timestamp,
-                        studentName: student.name,
+                        studentName: student.displayName,
                         type: 'Mất tập trung'
                     });
                 });
@@ -174,7 +175,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                             const hiddenCount = hiddenEvents.length;
                             return (
                                 <tr key={attempt.id} className="border-b border-slate-200 hover:bg-slate-50">
-                                    <td className="p-3 font-semibold text-slate-800 align-top">{student?.name || 'Không rõ'}</td>
+                                    <td className="p-3 font-semibold text-slate-800 align-top">{student?.displayName || 'Không rõ'}</td>
                                     <td className="p-3 text-slate-600 align-top">{new Date(attempt.startedAt).toLocaleString('vi-VN')}</td>
                                     <td className="p-3 text-slate-600 align-top">{attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString('vi-VN') : 'Chưa nộp'}</td>
                                     <td className="p-3 text-center align-top">

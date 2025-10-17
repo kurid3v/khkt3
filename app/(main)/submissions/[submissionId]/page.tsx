@@ -1,4 +1,6 @@
 
+
+
 'use client';
 
 import React from 'react';
@@ -143,7 +145,7 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
             <button onClick={onBack} className="mb-6 text-blue-600 font-semibold hover:underline">&larr; {backButtonText}</button>
             <header className="my-6 text-center border-b border-slate-200 pb-6">
                 <h1 className="text-4xl font-bold text-slate-900">{problem.title}</h1>
-                <p className="text-slate-600 mt-2 text-lg">Bài làm của: <span className="font-semibold text-slate-800">{submitter?.name || 'Người nộp ẩn danh'}</span></p>
+                <p className="text-slate-600 mt-2 text-lg">Bài làm của: <span className="font-semibold text-slate-800">{submitter?.displayName || 'Người nộp ẩn danh'}</span></p>
                 <p className="text-sm text-slate-500 mt-1">Nộp lúc: {new Date(submission.submittedAt).toLocaleString()}</p>
             </header>
             
@@ -164,7 +166,7 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
                 <div className="lg:col-span-1">
                     <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 sticky top-24">
                         <h2 className="text-2xl font-bold text-slate-800 mb-4">Kết quả chấm</h2>
-                        <FeedbackDisplay feedback={submission.feedback} />
+                        <FeedbackDisplay feedback={submission.feedback} problem={problem} />
                     </div>
                 </div>
             </div>

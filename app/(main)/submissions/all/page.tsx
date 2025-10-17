@@ -54,7 +54,8 @@ export default function AllSubmissionsPage() {
                                         const problem = problems.find(p => p.id === sub.problemId);
                                         return (
                                             <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className={trClickableClass}>
-                                                <td className={`${tdClass} font-semibold`}>{submitter?.name || 'Không rõ'}</td>
+                                                {/* FIX: Replaced `submitter?.name` with `submitter?.displayName` to align with the `UserSession` type, which uses `displayName` for the user's name. */}
+                                                <td className={`${tdClass} font-semibold`}>{submitter?.displayName || 'Không rõ'}</td>
                                                 <td className={`${tdClass} text-slate-600`}>{problem?.title || 'Không rõ'}</td>
                                                 <td className={`${tdClass} font-bold text-blue-600 text-right`}>{sub.feedback.totalScore.toFixed(2)}</td>
                                                 <td className={tdClass}>{new Date(sub.submittedAt).toLocaleString()}</td>

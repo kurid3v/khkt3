@@ -5,19 +5,20 @@ import type { User } from '@/types';
 
 export async function POST(req: Request) {
   try {
-    const { name, role, password } = await req.json();
-    const trimmedName = name?.trim();
+    const { username, displayName, role, password } = await req.json();
+    const trimmedUsername = username?.trim();
+    const trimmedDisplayName = displayName?.trim();
 
-    if (!trimmedName || !role || !password) {
+    if (!trimmedUsername || !trimmedDisplayName || !role || !password) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
     
-    const existingUser = db.users.some(u => u.name.toLowerCase() === trimmedName.toLowerCase());
+    const existingUser = db.users.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
     if (existingUser) {
-        return NextResponse.json({ message: 'Tên người dùng này đã tồn tại.' }, { status: 409 });
+        return NextResponse.json({ message: 'Tên đăng nhập này đã tồn tại.' }, { status: 409 });
     }
 
-    const newUser = db.users.create({ name: trimmedName, role, password });
+    const newUser = db.users.create({ username: trimmedUsername, displayName: trimmedDisplayName, role, password });
     const { password: _, ...userWithoutPassword } = newUser;
 
     return NextResponse.json({ user: userWithoutPassword }, { status: 201 });

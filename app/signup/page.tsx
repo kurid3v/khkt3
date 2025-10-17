@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -5,7 +6,8 @@ import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
 
 export default function SignUpPage() {
-  const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [role, setRole] = useState<'teacher' | 'student'>('student');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -13,12 +15,25 @@ export default function SignUpPage() {
 
   const { signUp } = useSession();
   const router = useRouter();
+  
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // remove accents
+        .replace(/[^a-z0-9]/gi, '') // remove non-alphanumeric
+        .toLowerCase();
+    setUsername(value);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name.trim()) {
+    if (!displayName.trim()) {
       setError('Họ và tên không được để trống.');
+      return;
+    }
+    if (!username.trim()) {
+      setError('Tên đăng nhập không được để trống.');
       return;
     }
     if (password.length < 6) {
@@ -30,7 +45,7 @@ export default function SignUpPage() {
       return;
     }
     
-    const result = await signUp(name, role, password);
+    const result = await signUp(username, displayName, role, password);
     if (result.success) {
       router.push('/dashboard');
     } else {
@@ -52,17 +67,32 @@ export default function SignUpPage() {
           {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
 
           <div>
-            <label htmlFor="name-input" className="block text-foreground text-sm font-semibold mb-2">
-              Họ và tên (dùng để đăng nhập)
+            <label htmlFor="displayName-input" className="block text-foreground text-sm font-semibold mb-2">
+              Họ và tên
             </label>
             <input
-              id="name-input"
+              id="displayName-input"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Ví dụ: Nguyễn Văn A"
               className={inputClasses}
             />
+          </div>
+
+          <div>
+            <label htmlFor="username-input" className="block text-foreground text-sm font-semibold mb-2">
+              Tên đăng nhập
+            </label>
+            <input
+              id="username-input"
+              type="text"
+              value={username}
+              onChange={handleUsernameChange}
+              placeholder="viết liền, không dấu, không viết hoa"
+              className={inputClasses}
+            />
+             <p className="text-xs text-muted-foreground mt-1">Dùng để đăng nhập. Ví dụ: nguyenvan_a sẽ trở thành nguyenvana</p>
           </div>
 
           <div>
@@ -119,7 +149,7 @@ export default function SignUpPage() {
             <button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!name || !password || !confirmPassword}
+              disabled={!displayName || !username || !password || !confirmPassword}
             >
               Đăng ký
             </button>

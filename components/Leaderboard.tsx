@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Submission, User } from '../types';
 
@@ -55,7 +56,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ submissions, users }) => {
                 {rankedUsers.map(({ user, score }, index) => (
                     <tr key={user!.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50">
                         <td className={`p-3 font-bold text-xl ${getRankColor(index)}`}>{index + 1}</td>
-                        <td className="p-3 font-semibold text-slate-800">{user!.name}</td>
+                        <td className="p-3 font-semibold text-slate-800">{user!.displayName}</td>
                         <td className="p-3 font-bold text-blue-600 text-right">{score.toFixed(2).replace(/\.00$/, '')}</td>
                     </tr>
                 ))}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
@@ -8,8 +9,8 @@ type UserSession = Omit<User, 'password'>;
 interface SessionContextType {
     currentUser: UserSession | null;
     isLoading: boolean;
-    login: (name: string, password: string) => Promise<boolean>;
-    signUp: (name: string, role: 'teacher' | 'student', password: string) => Promise<{ success: boolean; message?: string }>;
+    login: (username: string, password: string) => Promise<boolean>;
+    signUp: (username: string, displayName: string, role: 'teacher' | 'student', password: string) => Promise<{ success: boolean; message?: string }>;
     logout: () => void;
 }
 
@@ -33,12 +34,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
     }, []);
 
-    const login = async (name: string, password: string): Promise<boolean> => {
+    const login = async (username: string, password: string): Promise<boolean> => {
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, password }),
+                body: JSON.stringify({ username, password }),
             });
             if (response.ok) {
                 const userSession = await response.json();
@@ -52,12 +53,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         return false;
     };
 
-    const signUp = async (name: string, role: 'teacher' | 'student', password: string): Promise<{ success: boolean; message?: string }> => {
+    const signUp = async (username: string, displayName: string, role: 'teacher' | 'student', password: string): Promise<{ success: boolean; message?: string }> => {
         try {
             const response = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, role, password }),
+                body: JSON.stringify({ username, displayName, role, password }),
             });
             const data = await response.json();
 

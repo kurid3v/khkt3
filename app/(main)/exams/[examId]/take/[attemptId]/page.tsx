@@ -1,6 +1,8 @@
 
 
 
+
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -196,7 +198,7 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                 <header className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md flex justify-between items-center mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{exam.title}</h1>
-                        <p className="text-slate-500">{currentUser.name}</p>
+                        <p className="text-slate-500">{currentUser.displayName}</p>
                     </div>
                     <div className="text-right">
                         <div className="font-semibold text-slate-700">Thời gian còn lại:</div>

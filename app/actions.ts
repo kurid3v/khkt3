@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use server';
 
@@ -100,6 +101,9 @@ export async function removeExam(examId: string) {
   try {
     db.exams.delete(examId);
     revalidatePath('/exams');
+    revalidatePath('/admin');
+    revalidatePath('/dashboard');
+    revalidatePath('/submissions/all');
   } catch (error) {
     console.error("Failed to remove exam:", error);
     throw new Error("Không thể xóa đề thi.");

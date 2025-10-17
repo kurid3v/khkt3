@@ -1,3 +1,4 @@
+
 'use client';
 import React from 'react';
 import Link from 'next/link';
@@ -64,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="font-semibold text-foreground">{user.name}</span>
+            <span className="font-semibold text-foreground">{user.displayName}</span>
             <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>
               {roleText}
             </span>

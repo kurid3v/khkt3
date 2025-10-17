@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition, useOptimistic } from 'react';
@@ -94,7 +95,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-foreground">{problem.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Giao bởi: {teacher?.name || 'Không rõ'}</p>
+                        <p className="text-sm text-muted-foreground mt-1">Giao bởi: {teacher?.displayName || 'Không rõ'}</p>
                     </div>
                     <div className={`flex-shrink-0 p-2 rounded-full ${isEssay ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
                        {isEssay ? <BookOpenIcon className="w-5 h-5" /> : <ClipboardListIcon className="w-5 h-5" />}
