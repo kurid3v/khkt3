@@ -1,14 +1,27 @@
+
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
+import React, { useState, useTransition, useOptimistic } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
 import BookOpenIcon from '@/components/icons/BookOpenIcon';
 import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
+import TrashIcon from '@/components/icons/TrashIcon';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import { deleteProblem } from '@/app/actions';
 
 export default function DashboardPage() {
     const { problems, submissions, users, currentUser, isLoading } = useDataContext();
+    const router = useRouter();
+
+    const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
+    const [isPending, startTransition] = useTransition();
+
+    const [optimisticProblems, setOptimisticProblems] = useOptimistic(
+        problems,
+        (state, problemId: string) => state.filter(p => p.id !== problemId)
+    );
 
     if (isLoading) {
         return (
@@ -20,14 +33,27 @@ export default function DashboardPage() {
     }
 
     if (!currentUser) {
-        // This should be handled by the layout, but as a safeguard.
         return <p className="p-8">Vui lòng đăng nhập...</p>;
     }
 
-    // Filter out problems that are part of an exam
-    const standaloneProblems = problems
+    const standaloneProblems = optimisticProblems
         .filter(p => !p.examId)
         .sort((a, b) => b.createdAt - a.createdAt);
+
+    const handleDeleteClick = (e: React.MouseEvent, problem: Problem) => {
+        e.stopPropagation();
+        setProblemToDelete(problem);
+    };
+
+    const confirmDeleteProblem = () => {
+        if (problemToDelete) {
+            startTransition(async () => {
+                setOptimisticProblems(problemToDelete.id);
+                await deleteProblem(problemToDelete.id);
+            });
+            setProblemToDelete(null);
+        }
+    };
 
     const getSubmissionStatusForStudent = (problemId: string) => {
         const userSubmissions = submissions.filter(s => s.submitterId === currentUser.id && s.problemId === problemId);
@@ -51,7 +77,20 @@ export default function DashboardPage() {
         const isEssay = problem.type === 'essay';
 
         return (
-            <Link href={`/problems/${problem.id}`} className="block bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 border border-border transition-all duration-200">
+            <div
+                onClick={() => router.push(`/problems/${problem.id}`)}
+                className="block bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 border border-border transition-all duration-200 cursor-pointer relative group"
+            >
+                {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
+                    <button
+                        onClick={(e) => handleDeleteClick(e, problem)}
+                        className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100"
+                        aria-label={`Xóa bài tập ${problem.title}`}
+                        title="Xóa bài tập"
+                    >
+                        <TrashIcon />
+                    </button>
+                )}
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-foreground">{problem.title}</h3>
@@ -78,44 +117,53 @@ export default function DashboardPage() {
                         </p>
                     )}
                 </div>
-            </Link>
+            </div>
         );
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-foreground">
-                    Danh sách bài tập
-                </h1>
-                {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                    <Link
-                        href="/problems/create"
-                        className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
-                    >
-                        + Tạo bài tập mới
-                    </Link>
-                )}
-            </div>
-            
-            {standaloneProblems.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {standaloneProblems.map(problem => (
-                        <ProblemCard key={problem.id} problem={problem} />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16 bg-card rounded-lg border border-dashed">
-                     <p className="text-muted-foreground">
-                        {currentUser.role === 'student'
-                            ? 'Giáo viên của bạn chưa giao bài tập nào.'
-                            : 'Chưa có bài tập nào được tạo.'}
-                    </p>
+        <>
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-3xl font-bold text-foreground">
+                        Danh sách bài tập
+                    </h1>
                     {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                      <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo bài tập mới" để bắt đầu.</p>
+                        <button
+                            onClick={() => router.push('/problems/create')}
+                            className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                        >
+                            + Tạo bài tập mới
+                        </button>
                     )}
                 </div>
-            )}
-        </div>
+                
+                {standaloneProblems.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {standaloneProblems.map(problem => (
+                            <ProblemCard key={problem.id} problem={problem} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-16 bg-card rounded-lg border border-dashed">
+                         <p className="text-muted-foreground">
+                            {currentUser.role === 'student'
+                                ? 'Giáo viên của bạn chưa giao bài tập nào.'
+                                : 'Chưa có bài tập nào được tạo.'}
+                        </p>
+                        {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
+                          <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo bài tập mới" để bắt đầu.</p>
+                        )}
+                    </div>
+                )}
+            </div>
+            <ConfirmationModal
+                isOpen={!!problemToDelete}
+                onClose={() => setProblemToDelete(null)}
+                onConfirm={confirmDeleteProblem}
+                title="Xác nhận xóa bài tập"
+                message={`Bạn có chắc chắn muốn xóa bài tập "${problemToDelete?.title}" không? Hành động này sẽ xóa vĩnh viễn tất cả các bài nộp liên quan.`}
+            />
+        </>
     );
 }
