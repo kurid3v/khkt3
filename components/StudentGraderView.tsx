@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Submission, Problem, User } from '@/types';
@@ -35,6 +36,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
 
     try {
       const result = await gradeEssay(
+          problem.id,
           problem.prompt!, 
           essay, 
           problem.rubricItems || [], 
@@ -46,7 +48,8 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
         problemId: problem.id,
         submitterId: user.id,
         essay: essay,
-        feedback: result,
+        feedback: result.feedback,
+        similarityCheck: result.similarityCheck,
         examId: problem.examId,
       };
 

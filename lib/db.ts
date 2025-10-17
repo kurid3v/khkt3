@@ -1,11 +1,16 @@
-
 import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
 import fs from 'fs';
 import path from 'path';
-// FIX: Import 'process' to ensure the correct Node.js process type is used, resolving the 'cwd' property error.
 import process from 'process';
 
-// Define file paths
+// Import static data directly instead of reading from file system at runtime
+import usersData from '@/data/users.json';
+import problemsData from '@/data/problems.json';
+import submissionsData from '@/data/submissions.json';
+import examsData from '@/data/exams.json';
+import examAttemptsData from '@/data/examAttempts.json';
+
+// Define file paths for writing data
 const dataDir = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataDir, 'users.json');
 const problemsPath = path.join(dataDir, 'problems.json');
@@ -13,21 +18,8 @@ const submissionsPath = path.join(dataDir, 'submissions.json');
 const examsPath = path.join(dataDir, 'exams.json');
 const examAttemptsPath = path.join(dataDir, 'examAttempts.json');
 
-// Helper to read JSON file safely
-const readData = <T>(filePath: string): T[] => {
-    try {
-        if (fs.existsSync(filePath)) {
-            const fileContent = fs.readFileSync(filePath, 'utf-8');
-            // Handle empty file case
-            return fileContent ? JSON.parse(fileContent) : [];
-        }
-    } catch (error) {
-        console.error(`Error reading data from ${filePath}:`, error);
-    }
-    return [];
-};
 
-// Helper to write JSON file
+// Helper to write JSON file for persistence
 const writeData = (filePath: string, data: any) => {
     try {
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
@@ -37,13 +29,13 @@ const writeData = (filePath: string, data: any) => {
 };
 
 
-// In-memory data store, initialized by reading from files.
+// In-memory data store, initialized by importing JSON files.
 const store = {
-    users: readData<User>(usersPath),
-    problems: readData<Problem>(problemsPath),
-    submissions: readData<Submission>(submissionsPath),
-    exams: readData<Exam>(examsPath),
-    examAttempts: readData<ExamAttempt>(examAttemptsPath),
+    users: usersData as User[],
+    problems: problemsData as Problem[],
+    submissions: submissionsData as Submission[],
+    exams: examsData as Exam[],
+    examAttempts: examAttemptsData as ExamAttempt[],
 };
 
 // Data access layer that now persists changes to JSON files.

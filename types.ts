@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   username: string; // for login
@@ -64,6 +65,7 @@ export interface Submission {
   // Fields for different submission types
   essay?: string; // For 'essay' type
   answers?: Answer[]; // For 'reading_comprehension' type
+  similarityCheck?: SimilarityCheckResult;
 }
 
 export interface Exam {

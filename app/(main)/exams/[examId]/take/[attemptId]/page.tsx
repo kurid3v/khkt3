@@ -3,6 +3,7 @@
 
 
 
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -119,20 +120,24 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
             const essayText = answers[problem.id] || '';
             if (essayText.trim()) {
                 try {
-                    const feedback = await gradeEssay(
-                        problem.prompt,
+                    // FIX: Correctly call `gradeEssay` with `problem.id` and handle the returned object.
+                    const result = await gradeEssay(
+                        problem.id,
+                        problem.prompt!,
                         essayText,
                         problem.rubricItems || [],
                         problem.rawRubric || '',
                         String(problem.customMaxScore || 10)
                     );
 
+                    // FIX: Use `result.feedback` for the feedback property and include `result.similarityCheck`.
                     newSubmissions.push({
                         id: crypto.randomUUID(),
                         problemId: problem.id,
                         submitterId: currentUser.id,
                         essay: essayText,
-                        feedback,
+                        feedback: result.feedback,
+                        similarityCheck: result.similarityCheck,
                         submittedAt: submissionTime,
                         examId: exam.id,
                     });

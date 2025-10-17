@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import React from 'react';
@@ -11,6 +12,7 @@ import LockClosedIcon from '@/components/icons/LockClosedIcon';
 import type { Question, Option, Answer } from '@/types';
 import CheckIcon from '@/components/icons/CheckIcon';
 import XCircleIcon from '@/components/icons/XCircleIcon';
+import SimilarityCheckDisplay from '@/components/SimilarityCheckDisplay';
 
 const ReadingComprehensionResult: React.FC<{ problem: any, submission: any }> = ({ problem, submission }) => {
     const questions: Question[] = problem.questions || [];
@@ -163,11 +165,14 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
                     )}
                 </div>
                 
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 space-y-8">
                     <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 sticky top-24">
                         <h2 className="text-2xl font-bold text-slate-800 mb-4">Kết quả chấm</h2>
                         <FeedbackDisplay feedback={submission.feedback} problem={problem} />
                     </div>
+                     {submission.similarityCheck && problem.type === 'essay' && (
+                        <SimilarityCheckDisplay similarityCheck={submission.similarityCheck} />
+                    )}
                 </div>
             </div>
         </div>

@@ -1,5 +1,6 @@
 
-import type { Feedback, RubricItem, Problem, Answer } from '@/types';
+
+import type { Feedback, RubricItem, Problem, Answer, SimilarityCheckResult } from '@/types';
 
 async function callApi<T>(action: string, payload: unknown): Promise<T> {
   const response = await fetch('/api/gemini', {
@@ -17,9 +18,9 @@ async function callApi<T>(action: string, payload: unknown): Promise<T> {
   return response.json();
 }
 
-export async function gradeEssay(prompt: string, essay: string, rubric: RubricItem[], rawRubric: string, customMaxScore: string): Promise<Feedback> {
+export async function gradeEssay(problemId: string, prompt: string, essay: string, rubric: RubricItem[], rawRubric: string, customMaxScore: string): Promise<{ feedback: Feedback, similarityCheck: SimilarityCheckResult }> {
   try {
-    return await callApi<Feedback>('grade', { prompt, essay, rubric, rawRubric, customMaxScore });
+    return await callApi<{ feedback: Feedback, similarityCheck: SimilarityCheckResult }>('grade', { problemId, prompt, essay, rubric, rawRubric, customMaxScore });
   } catch (error) {
     console.error("Error in gradeEssay service:", error);
     throw new Error("Failed to get a valid response from the AI model.");
