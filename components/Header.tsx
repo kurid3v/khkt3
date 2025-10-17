@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
       <div className="container mx-auto px-4 py-3 max-w-7xl flex justify-between items-center">
         <div className="flex items-center gap-6">
             <Link href="/dashboard" className="text-xl font-bold text-foreground">
-                Lớp học AI
+                AVinci
             </Link>
             <nav className="flex items-center gap-2">
                 <NavLink href="/dashboard">Bài tập</NavLink>

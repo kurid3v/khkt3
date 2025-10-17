@@ -18,8 +18,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Lớp học Văn AI",
-  description: "Một ứng dụng web dành cho giáo viên để tạo bài tập làm văn và cho học sinh nộp bài, nhận điểm và phản hồi được hỗ trợ bởi AI. Có bảng xếp hạng và lịch sử nộp bài.",
+  title: "AVinci",
+  description: "AVinci: Nền tảng học tập và sáng tạo được hỗ trợ bởi AI, giúp giáo viên giao bài và học sinh nhận phản hồi tức thì.",
 };
 
 export default function RootLayout({

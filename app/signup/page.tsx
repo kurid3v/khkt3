@@ -89,7 +89,7 @@ export default function SignUpPage() {
         <form onSubmit={handleSubmit} className="bg-card shadow-lg rounded-xl border border-border p-8 space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-foreground">Tạo tài khoản</h1>
-            <p className="text-muted-foreground mt-2">Tham gia Lớp học AI ngay hôm nay</p>
+            <p className="text-muted-foreground mt-2">Tham gia AVinci ngay hôm nay</p>
           </div>
           
           {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}

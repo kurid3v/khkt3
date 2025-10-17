@@ -1,6 +1,6 @@
 {
-  "name": "Copy of AI Literature Classroom",
-  "description": "A web application for teachers to create essay assignments and for students to submit and receive AI-powered grading and feedback. Features leaderboards and submission history.",
+  "name": "AVinci",
+  "description": "AVinci: An AI-powered platform for literature education, enabling teachers to create assignments and students to receive instant feedback.",
   "requestFramePermissions": [
     "camera"
   ]
