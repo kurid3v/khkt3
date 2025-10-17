@@ -1,13 +1,11 @@
 
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        // FIX: The original handler was missing the 'type' field and only handled essay problems.
-        // This updated logic handles both 'essay' and 'reading_comprehension' types,
-        // ensuring the correct data is saved based on the problem type.
         const {
           title,
           createdBy,

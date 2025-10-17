@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Problem, User, Answer, Submission } from '@/types';
@@ -12,7 +13,7 @@ interface ReadingComprehensionSolverProps {
 }
 
 const ReadingComprehensionSolver: React.FC<ReadingComprehensionSolverProps> = ({ problem, user, onSubmissionComplete }) => {
-  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [answers, setAnswers] = useState<{ [key: string]: { selectedOptionId?: string, writtenAnswer?: string } }>({});
   const [error, setError] = useState<string | null>(null);
   const [isGrading, setIsGrading] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
@@ -21,7 +22,11 @@ const ReadingComprehensionSolver: React.FC<ReadingComprehensionSolverProps> = ({
   const questions = problem.questions || [];
 
   const handleOptionChange = (questionId: string, optionId: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+    setAnswers(prev => ({ ...prev, [questionId]: { selectedOptionId: optionId } }));
+  };
+
+  const handleTextChange = (questionId: string, text: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: { writtenAnswer: text } }));
   };
 
   const handleSubmit = async () => {
@@ -33,10 +38,15 @@ const ReadingComprehensionSolver: React.FC<ReadingComprehensionSolverProps> = ({
     setIsGrading(true);
 
     try {
-      const formattedAnswers: Answer[] = Object.entries(answers).map(([questionId, selectedOptionId]) => ({
-        questionId,
-        selectedOptionId,
-      }));
+      // FIX: Explicitly cast the 'answerValue' from Object.entries to its expected type. This resolves a TypeScript inference issue where the value was being treated as 'unknown', causing property access errors.
+      const formattedAnswers: Answer[] = Object.entries(answers).map(([questionId, answerValue]) => {
+        const value = answerValue as { selectedOptionId?: string; writtenAnswer?: string };
+        return {
+            questionId,
+            selectedOptionId: value.selectedOptionId,
+            writtenAnswer: value.writtenAnswer,
+        };
+      });
 
       const feedback = await gradeReadingComprehension(problem, formattedAnswers);
 
@@ -69,22 +79,35 @@ const ReadingComprehensionSolver: React.FC<ReadingComprehensionSolverProps> = ({
             <p className="font-semibold text-foreground mb-3">
               Câu {index + 1}: {q.questionText}
             </p>
-            <div className="space-y-2">
-              {q.options.map(opt => (
-                <label key={opt.id} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted cursor-pointer has-[:checked]:bg-primary/10 has-[:checked]:border-primary border border-transparent">
-                  <input
-                    type="radio"
-                    name={q.id}
-                    value={opt.id}
-                    checked={answers[q.id] === opt.id}
-                    onChange={() => handleOptionChange(q.id, opt.id)}
-                    className="form-radio h-4 w-4 text-primary focus:ring-primary disabled:opacity-50"
-                    disabled={isLoading}
-                  />
-                  <span className="text-foreground">{opt.text}</span>
-                </label>
-              ))}
-            </div>
+            {q.questionType === 'multiple_choice' ? (
+                <div className="space-y-2">
+                {q.options?.map(opt => (
+                    <label key={opt.id} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted cursor-pointer has-[:checked]:bg-primary/10 has-[:checked]:border-primary border border-transparent">
+                    <input
+                        type="radio"
+                        name={q.id}
+                        value={opt.id}
+                        checked={answers[q.id]?.selectedOptionId === opt.id}
+                        onChange={() => handleOptionChange(q.id, opt.id)}
+                        className="form-radio h-4 w-4 text-primary focus:ring-primary disabled:opacity-50"
+                        disabled={isLoading}
+                    />
+                    <span className="text-foreground">{opt.text}</span>
+                    </label>
+                ))}
+                </div>
+            ) : (
+                <div>
+                    <textarea
+                        value={answers[q.id]?.writtenAnswer || ''}
+                        onChange={(e) => handleTextChange(q.id, e.target.value)}
+                        placeholder="Nhập câu trả lời của bạn..."
+                        className="mt-2 w-full p-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-primary resize-y disabled:bg-muted disabled:cursor-not-allowed"
+                        rows={4}
+                        disabled={isLoading}
+                    />
+                </div>
+            )}
           </div>
         ))}
       </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition, Suspense } from 'react';
@@ -8,7 +9,6 @@ import type { RubricItem, Question, Option } from '@/types';
 import { parseRubric } from '@/services/geminiService';
 import BookOpenIcon from '@/components/icons/BookOpenIcon';
 import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
-// FIX: Import the missing TrashIcon component.
 import TrashIcon from '@/components/icons/TrashIcon';
 
 function CreateProblemForm() {
@@ -50,6 +50,7 @@ function CreateProblemForm() {
     setQuestions([...questions, {
       id: crypto.randomUUID(),
       questionText: '',
+      questionType: 'multiple_choice',
       options: [{ id: newOptionId, text: '' }],
       correctOptionId: newOptionId,
     }]);
@@ -58,14 +59,33 @@ function CreateProblemForm() {
   const updateQuestionText = (qId: string, text: string) => {
     setQuestions(questions.map(q => q.id === qId ? { ...q, questionText: text } : q));
   };
+  const setQuestionType = (qId: string, type: 'multiple_choice' | 'short_answer') => {
+    setQuestions(questions.map(q => {
+        if (q.id === qId) {
+            const newQ: Question = { ...q, questionType: type };
+            if (type === 'multiple_choice' && !q.options?.length) {
+                const newOptionId = crypto.randomUUID();
+                newQ.options = [{ id: newOptionId, text: '' }];
+                newQ.correctOptionId = newOptionId;
+            } else if (type === 'short_answer') {
+                delete newQ.options;
+                delete newQ.correctOptionId;
+            }
+            return newQ;
+        }
+        return q;
+    }));
+  };
+  const updateGradingCriteria = (qId: string, text: string) => {
+    setQuestions(questions.map(q => q.id === qId ? { ...q, gradingCriteria: text } : q));
+  }
   const addOption = (qId: string) => {
-    setQuestions(questions.map(q => q.id === qId ? { ...q, options: [...q.options, { id: crypto.randomUUID(), text: '' }] } : q));
+    setQuestions(questions.map(q => q.id === qId ? { ...q, options: [...(q.options || []), { id: crypto.randomUUID(), text: '' }] } : q));
   };
   const removeOption = (qId: string, oId: string) => {
     setQuestions(questions.map(q => {
-      if (q.id === qId) {
+      if (q.id === qId && q.options) {
         const newOptions = q.options.filter(o => o.id !== oId);
-        // If the deleted option was the correct one, default to the first remaining option
         const newCorrectId = q.correctOptionId === oId ? (newOptions[0]?.id || '') : q.correctOptionId;
         return { ...q, options: newOptions, correctOptionId: newCorrectId };
       }
@@ -74,7 +94,7 @@ function CreateProblemForm() {
   };
   const updateOptionText = (qId: string, oId: string, text: string) => {
     setQuestions(questions.map(q => q.id === qId
-      ? { ...q, options: q.options.map(o => o.id === oId ? { ...o, text } : o) }
+      ? { ...q, options: q.options?.map(o => o.id === oId ? { ...o, text } : o) }
       : q));
   };
   const setCorrectOption = (qId: string, oId: string) => {
@@ -109,8 +129,8 @@ function CreateProblemForm() {
         setError('Đoạn văn không được để trống.');
         return;
       }
-      if (questions.length === 0 || questions.some(q => !q.questionText.trim() || q.options.length < 2 || q.options.some(o => !o.text.trim()))) {
-        setError('Phải có ít nhất một câu hỏi, mỗi câu hỏi phải có ít nhất hai lựa chọn và không có trường nào được để trống.');
+      if (questions.length === 0 || questions.some(q => !q.questionText.trim() || (q.questionType === 'multiple_choice' && (q.options?.length ?? 0) < 2) || (q.questionType === 'multiple_choice' && q.options?.some(o => !o.text.trim())))) {
+        setError('Phải có ít nhất một câu hỏi, mỗi câu hỏi trắc nghiệm phải có ít nhất hai lựa chọn và không có trường nào được để trống.');
         return;
       }
       problemData = { type: 'reading_comprehension', title, passage, questions, createdBy: currentUser.id, examId: examId || undefined };
@@ -252,29 +272,54 @@ function CreateProblemForm() {
             </div>
             <div className="pt-6 border-t border-border space-y-4">
               <div className="flex justify-between items-center">
-                <label className={labelClass}>Câu hỏi trắc nghiệm</label>
+                <label className={labelClass}>Câu hỏi</label>
                 <button type="button" onClick={addQuestion} className="px-4 py-2 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm câu hỏi</button>
               </div>
               {questions.map((q, qIndex) => (
                 <div key={q.id} className="p-4 bg-secondary/30 rounded-lg space-y-3">
-                  <div className="flex items-center gap-2">
-                    <label htmlFor={`q-text-${q.id}`} className="font-semibold text-foreground">Câu {qIndex + 1}</label>
-                    <input id={`q-text-${q.id}`} type="text" value={q.questionText} onChange={e => updateQuestionText(q.id, e.target.value)} placeholder="Nhập câu hỏi..." className="flex-grow p-2 border border-border rounded-md bg-card" />
+                  <div className="flex items-start gap-2">
+                    <label htmlFor={`q-text-${q.id}`} className="font-semibold text-foreground pt-2">Câu {qIndex + 1}</label>
+                    <div className="flex-grow">
+                      <input id={`q-text-${q.id}`} type="text" value={q.questionText} onChange={e => updateQuestionText(q.id, e.target.value)} placeholder="Nhập câu hỏi..." className="w-full p-2 border border-border rounded-md bg-card" />
+                      {/* Type selector */}
+                      <div className="flex items-center gap-4 mt-2">
+                          <label className="text-sm font-semibold text-muted-foreground">Loại:</label>
+                          <div className="flex rounded-md border border-border p-0.5 bg-background">
+                              <button type="button" onClick={() => setQuestionType(q.id, 'multiple_choice')} className={`px-3 py-1 text-xs rounded-sm ${q.questionType === 'multiple_choice' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Trắc nghiệm</button>
+                              <button type="button" onClick={() => setQuestionType(q.id, 'short_answer')} className={`px-3 py-1 text-xs rounded-sm ${q.questionType === 'short_answer' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Tự luận</button>
+                          </div>
+                      </div>
+                    </div>
                     <button type="button" onClick={() => removeQuestion(q.id)} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full" aria-label="Xóa câu hỏi">
                       <TrashIcon />
                     </button>
                   </div>
-                  <div className="pl-6 space-y-2">
-                    {q.options.map((opt, oIndex) => (
-                      <div key={opt.id} className="flex items-center gap-2">
-                        <input type="radio" name={`correct-opt-${q.id}`} id={`radio-${opt.id}`} checked={q.correctOptionId === opt.id} onChange={() => setCorrectOption(q.id, opt.id)} className="form-radio h-4 w-4 text-primary focus:ring-primary"/>
-                        <label htmlFor={`radio-${opt.id}`} className="text-sm font-medium text-muted-foreground">Đáp án đúng</label>
-                        <input type="text" value={opt.text} onChange={e => updateOptionText(q.id, opt.id, e.target.value)} placeholder={`Lựa chọn ${oIndex + 1}`} className="flex-grow p-2 border border-border rounded-md bg-card" />
-                        {q.options.length > 1 && <button type="button" onClick={() => removeOption(q.id, opt.id)} className="p-1 text-sm text-muted-foreground hover:text-destructive rounded-full">&times;</button>}
+                  
+                  {q.questionType === 'multiple_choice' ? (
+                      <div className="pl-8 space-y-2">
+                        {q.options?.map((opt, oIndex) => (
+                          <div key={opt.id} className="flex items-center gap-2">
+                            <input type="radio" name={`correct-opt-${q.id}`} id={`radio-${opt.id}`} checked={q.correctOptionId === opt.id} onChange={() => setCorrectOption(q.id, opt.id)} className="form-radio h-4 w-4 text-primary focus:ring-primary"/>
+                            <label htmlFor={`radio-${opt.id}`} className="sr-only">Đáp án đúng</label>
+                            <input type="text" value={opt.text} onChange={e => updateOptionText(q.id, opt.id, e.target.value)} placeholder={`Lựa chọn ${oIndex + 1}`} className="flex-grow p-2 border border-border rounded-md bg-card" />
+                            {(q.options?.length ?? 0) > 1 && <button type="button" onClick={() => removeOption(q.id, opt.id)} className="p-1 text-sm text-muted-foreground hover:text-destructive rounded-full">&times;</button>}
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => addOption(q.id)} className="px-3 py-1 text-xs text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm lựa chọn</button>
                       </div>
-                    ))}
-                    <button type="button" onClick={() => addOption(q.id)} className="px-3 py-1 text-xs text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm lựa chọn</button>
-                  </div>
+                  ) : (
+                    <div className="pl-8 space-y-2">
+                        <label htmlFor={`criteria-${q.id}`} className="text-sm font-semibold text-muted-foreground">Đáp án mẫu / Tiêu chí chấm (cho AI)</label>
+                        <textarea 
+                            id={`criteria-${q.id}`}
+                            value={q.gradingCriteria || ''} 
+                            onChange={e => updateGradingCriteria(q.id, e.target.value)}
+                            placeholder="Cung cấp đáp án mẫu hoặc tiêu chí để AI chấm điểm chính xác..."
+                            className="w-full p-2 border border-border rounded-md bg-card text-sm"
+                            rows={2}
+                        />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

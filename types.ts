@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -5,7 +6,6 @@ export interface User {
   password: string;
 }
 
-// NEW: Add Question and Option types for reading comprehension
 export interface Option {
   id: string;
   text: string;
@@ -14,8 +14,14 @@ export interface Option {
 export interface Question {
   id: string;
   questionText: string;
-  options: Option[];
-  correctOptionId: string;
+  questionType: 'multiple_choice' | 'short_answer';
+  
+  // Multiple choice fields
+  options?: Option[];
+  correctOptionId?: string;
+  
+  // Short answer fields
+  gradingCriteria?: string; // Model answer or criteria for AI
 }
 
 export interface Problem {
@@ -25,7 +31,6 @@ export interface Problem {
   createdAt: number;
   examId?: string; // ID of the exam this problem belongs to
 
-  // NEW: Differentiate between problem types
   type: 'essay' | 'reading_comprehension';
 
   // Essay-specific fields
@@ -40,10 +45,10 @@ export interface Problem {
   questions?: Question[];
 }
 
-// NEW: Add Answer type for reading comprehension submissions
 export interface Answer {
   questionId: string;
-  selectedOptionId: string;
+  selectedOptionId?: string; // For multiple choice
+  writtenAnswer?: string;   // For short answer
 }
 
 

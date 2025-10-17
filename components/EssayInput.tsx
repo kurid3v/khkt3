@@ -1,29 +1,46 @@
+
 'use client';
 import React from 'react';
+import CameraIcon from './icons/CameraIcon';
 
 interface EssayInputProps {
   essay: string;
   setEssay: (value: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  onScanClick?: () => void;
 }
 
 const EssayInput: React.FC<EssayInputProps> = ({ 
   essay, setEssay, 
-  onSubmit, isLoading 
+  onSubmit, isLoading,
+  onScanClick
 }) => {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <label htmlFor="essay-input" className="text-lg font-semibold text-slate-800">
-          Nội dung bài văn của bạn
-        </label>
+        <div className="flex justify-between items-center mb-2">
+            <label htmlFor="essay-input" className="text-lg font-semibold text-slate-800">
+            Nội dung bài văn của bạn
+            </label>
+            {onScanClick && (
+                <button
+                    type="button"
+                    onClick={onScanClick}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-100 text-slate-700 font-semibold rounded-md hover:bg-slate-200 disabled:opacity-50"
+                >
+                    <CameraIcon />
+                    Quét bài làm giấy
+                </button>
+            )}
+        </div>
         <textarea
           id="essay-input"
           value={essay}
           onChange={(e) => setEssay(e.target.value)}
-          placeholder="Dán bài văn của bạn vào đây..."
-          className="mt-2 w-full h-64 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y disabled:bg-slate-100 disabled:cursor-not-allowed"
+          placeholder="Dán bài văn của bạn vào đây hoặc dùng tính năng quét..."
+          className="w-full h-64 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y disabled:bg-slate-100 disabled:cursor-not-allowed"
           disabled={isLoading}
           aria-label="Nội dung bài văn"
           required

@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Submission, Problem, User } from '@/types';
@@ -6,6 +7,7 @@ import EssayInput from './EssayInput';
 import FeedbackDisplay from './FeedbackDisplay';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
+import EssayScanner from './EssayScanner';
 
 interface StudentGraderViewProps {
   problem: Problem;
@@ -18,6 +20,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isGrading, setIsGrading] = useState<boolean>(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const isLoading = isPending || isGrading;
 
@@ -32,7 +35,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
 
     try {
       const result = await gradeEssay(
-          problem.prompt, 
+          problem.prompt!, 
           essay, 
           problem.rubricItems || [], 
           problem.rawRubric || '', 
@@ -45,7 +48,6 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
         essay: essay,
         feedback: result,
         examId: problem.examId,
-        // Similarity check is now removed from student submission flow
       };
 
       // Use a transition to call the server action, preventing UI blocking
@@ -63,20 +65,32 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
     }
   };
 
-  return (
-    <div className="bg-card p-6 sm:p-8 rounded-xl shadow-sm border border-border">
-      <EssayInput
-        essay={essay}
-        setEssay={setEssay}
-        onSubmit={handleGradeEssay}
-        isLoading={isLoading}
-      />
+  const handleTextExtracted = (text: string) => {
+    setEssay(prev => prev ? `${prev}\n\n${text}` : text);
+  };
 
-      <div className="mt-8">
-        {isLoading && <LoadingSpinner />}
-        {error && !isLoading && <ErrorMessage message={error} />}
+  return (
+    <>
+      <div className="bg-card p-6 sm:p-8 rounded-xl shadow-sm border border-border">
+        <EssayInput
+          essay={essay}
+          setEssay={setEssay}
+          onSubmit={handleGradeEssay}
+          isLoading={isLoading}
+          onScanClick={() => setIsScannerOpen(true)}
+        />
+
+        <div className="mt-8">
+          {isLoading && <LoadingSpinner />}
+          {error && !isLoading && <ErrorMessage message={error} />}
+        </div>
       </div>
-    </div>
+       <EssayScanner 
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onTextExtracted={handleTextExtracted}
+      />
+    </>
   );
 };
 

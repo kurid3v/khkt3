@@ -1,6 +1,7 @@
+
 import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Feedback, RubricItem, Problem, Answer, Question } from '@/types';
+import type { Feedback, RubricItem, Problem, Answer, Question, DetailedFeedbackItem } from '@/types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set on the server");
@@ -229,100 +230,115 @@ async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricIt
     return parsedResponse;
 }
 
-const explanationSystemInstruction = `Bạn là một giáo viên giỏi, chuyên giải thích các câu hỏi đọc hiểu một cách ngắn gọn, dễ hiểu. Nhiệm vụ của bạn là đọc một đoạn văn, một câu hỏi, và câu trả lời đúng, sau đó đưa ra lời giải thích súc tích tại sao đáp án đó lại đúng dựa vào nội dung trong đoạn văn.`;
-
-const explanationSchema = {
+// New schema for grading short answers
+const shortAnswerGradingSchema = {
     type: Type.OBJECT,
     properties: {
-        explanations: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    questionId: { type: Type.STRING },
-                    explanation: { type: Type.STRING }
-                },
-                required: ["questionId", "explanation"]
-            }
-        }
+        score: { type: Type.NUMBER, description: "Điểm cho câu trả lời này, thang điểm 1. Cho 1 điểm nếu đúng/đủ ý, 0.5 nếu có ý đúng nhưng chưa đủ, 0 nếu sai hoàn toàn." },
+        feedback: { type: Type.STRING, description: "Giải thích ngắn gọn tại sao cho điểm số đó. Nếu sai, hãy chỉ ra điểm sai." }
     },
-    required: ["explanations"]
+    required: ["score", "feedback"]
 };
-
-async function getExplanationsForQuestions(passage: string, questions: Question[]): Promise<Map<string, string>> {
-    const questionsToExplain = questions.map(q => {
-        const correctOption = q.options.find(o => o.id === q.correctOptionId);
-        return {
-            questionId: q.id,
-            questionText: q.questionText,
-            correctAnswerText: correctOption?.text || "Không rõ"
-        };
-    });
-
-    const content = `
-        Dựa vào đoạn văn dưới đây, hãy giải thích ngắn gọn tại sao các câu trả lời cho từng câu hỏi sau lại đúng.
-
-        **Đoạn văn:**
-        """
-        ${passage}
-        """
-
-        **Câu hỏi và câu trả lời đúng:**
-        ${JSON.stringify(questionsToExplain, null, 2)}
-    `.trim();
-
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: content,
-        config: {
-            systemInstruction: explanationSystemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: explanationSchema,
-            temperature: 0.2,
-        }
-    });
-
-    const jsonText = extractJson(response.text);
-    if (!jsonText) {
-        throw new Error("AI explanation response was invalid.");
-    }
-    
-    const parsed = JSON.parse(jsonText) as { explanations: { questionId: string, explanation: string }[] };
-    const explanationMap = new Map<string, string>();
-    parsed.explanations.forEach(item => {
-        explanationMap.set(item.questionId, item.explanation);
-    });
-    return explanationMap;
-}
-
 
 async function gradeReadingComprehensionOnServer(problem: Problem, answers: Answer[]): Promise<Feedback> {
     const questions = problem.questions || [];
     const passage = problem.passage || "";
     let totalScore = 0;
+    const feedbackItems: DetailedFeedbackItem[] = [];
 
-    const explanations = await getExplanationsForQuestions(passage, questions);
-
-    const detailedFeedback = questions.map(question => {
+    const gradingPromises = questions.map(async (question) => {
         const studentAnswer = answers.find(a => a.questionId === question.id);
-        const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
-        const score = isCorrect ? 1 : 0;
-        if (isCorrect) {
-            totalScore++;
+
+        if (question.questionType === 'multiple_choice') {
+            const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
+            const score = isCorrect ? 1 : 0;
+            const correctOptionText = question.options?.find(o => o.id === question.correctOptionId)?.text;
+            const feedback = isCorrect 
+                ? "Bạn đã trả lời đúng." 
+                : `Bạn đã trả lời sai. Đáp án đúng là: "${correctOptionText}"`;
+            return { criterion: question.questionText, score, feedback };
         }
-        return {
-            criterion: question.questionText,
-            score: score,
-            feedback: explanations.get(question.id) || "Không có giải thích."
-        };
+
+        if (question.questionType === 'short_answer') {
+            if (studentAnswer?.writtenAnswer && studentAnswer.writtenAnswer.trim()) {
+                const prompt = `
+                    Dựa vào đoạn trích sau:
+                    """${passage}"""
+
+                    Câu hỏi: "${question.questionText}"
+                    ${question.gradingCriteria ? `Tiêu chí chấm/Đáp án mẫu: "${question.gradingCriteria}"` : ''}
+
+                    Câu trả lời của học sinh:
+                    """${studentAnswer.writtenAnswer}"""
+
+                    Hãy chấm điểm câu trả lời này trên thang điểm 1 và đưa ra nhận xét ngắn gọn.
+                `.trim();
+
+                try {
+                    const response = await ai.models.generateContent({
+                        model: "gemini-2.5-flash",
+                        contents: prompt,
+                        config: {
+                            systemInstruction: "Bạn là một giáo viên văn chấm bài tự luận ngắn. Hãy chấm điểm công tâm dựa trên tiêu chí và đưa ra nhận xét súc tích.",
+                            responseMimeType: "application/json",
+                            responseSchema: shortAnswerGradingSchema,
+                            temperature: 0.1,
+                        }
+                    });
+                    const jsonText = extractJson(response.text);
+                    if (jsonText) {
+                        const result = JSON.parse(jsonText) as { score: number, feedback: string };
+                        return { criterion: question.questionText, score: result.score, feedback: result.feedback };
+                    }
+                } catch (err) {
+                    console.error(`Failed to grade short answer for question ${question.id}`, err);
+                }
+            }
+             // Handle no answer or AI error
+            return { criterion: question.questionText, score: 0, feedback: "Không có câu trả lời hoặc đã xảy ra lỗi khi chấm." };
+        }
+        
+        // Fallback for unknown question types
+        return { criterion: question.questionText, score: 0, feedback: "Loại câu hỏi không xác định." };
     });
 
+    const results = await Promise.all(gradingPromises);
+    
+    // Use a map to preserve order
+    const feedbackMap = new Map<string, DetailedFeedbackItem>();
+    results.forEach(item => {
+        totalScore += item.score;
+        feedbackMap.set(item.criterion, item);
+    });
+
+    const orderedFeedback = questions.map(q => feedbackMap.get(q.questionText)!);
+
     return {
-        detailedFeedback,
+        detailedFeedback: orderedFeedback,
         totalScore,
-        maxScore: questions.length,
+        maxScore: questions.length, // Each question is worth 1 point for simplicity
         generalSuggestions: [],
     };
+}
+
+
+async function imageToTextOnServer(base64Image: string): Promise<string> {
+    const imagePart = {
+        inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64Image,
+        },
+    };
+    const textPart = {
+        text: "Trích xuất tất cả chữ viết tay từ hình ảnh này dưới dạng văn bản thuần túy. Giữ nguyên định dạng và ngắt dòng nhiều nhất có thể."
+    };
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts: [imagePart, textPart] },
+    });
+    
+    return response.text;
 }
 
 
@@ -347,6 +363,12 @@ export async function POST(request: Request) {
       const { rawRubricText } = payload;
       const parsedRubric = await parseRubricOnServer(rawRubricText);
       return NextResponse.json(parsedRubric);
+    }
+
+    if (action === 'image_to_text') {
+        const { base64Image } = payload;
+        const text = await imageToTextOnServer(base64Image);
+        return NextResponse.json(text);
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

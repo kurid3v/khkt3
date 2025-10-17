@@ -1,3 +1,4 @@
+
 import type { Feedback, RubricItem, Problem, Answer } from '@/types';
 
 async function callApi<T>(action: string, payload: unknown): Promise<T> {
@@ -41,5 +42,15 @@ export async function parseRubric(rawRubricText: string): Promise<Omit<RubricIte
 {
     console.error("Error in parseRubric service:", error);
     throw new Error("Failed to parse rubric using the AI model.");
+  }
+}
+
+export async function getTextFromImage(base64Image: string): Promise<string> {
+  try {
+    // The API route will return a JSON-encoded string, which callApi will parse.
+    return await callApi<string>('image_to_text', { base64Image });
+  } catch (error) {
+    console.error("Error in getTextFromImage service:", error);
+    throw new Error("Failed to extract text using the AI model.");
   }
 }
