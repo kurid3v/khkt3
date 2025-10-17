@@ -47,7 +47,7 @@ export const db = {
         find: (predicate: (user: User) => boolean) => store.users.find(predicate),
         some: (predicate: (user: User) => boolean) => store.users.some(predicate),
         create: (data: Omit<User, 'id'>) => {
-            const newUser: User = { ...data, id: crypto.randomUUID() };
+            const newUser: User = { ...data, id: crypto.randomUUID(), avatar: data.avatar || undefined };
             store.users.push(newUser);
             writeData(usersPath, store.users); // Persist
             return newUser;

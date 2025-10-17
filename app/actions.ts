@@ -10,10 +10,29 @@ export async function updateUser(userId: string, formData: FormData) {
     try {
         const displayName = formData.get('displayName') as string;
         const role = formData.get('role') as User['role'];
+        const username = formData.get('username') as string;
+        const password = formData.get('password') as string;
+        const confirmPassword = formData.get('confirmPassword') as string;
+        const avatar = formData.get('avatar') as string; // base64 string
 
         const updateData: Partial<User> = {};
         if (displayName) updateData.displayName = displayName;
         if (role) updateData.role = role;
+        if (username) updateData.username = username;
+        // Only update avatar if a new one was provided
+        if (avatar && avatar.startsWith('data:image')) {
+            updateData.avatar = avatar;
+        }
+
+        if (password) {
+            if (password !== confirmPassword) {
+                throw new Error("Mật khẩu không khớp.");
+            }
+            if (password.length < 6) {
+                throw new Error("Mật khẩu phải có ít nhất 6 ký tự.");
+            }
+            updateData.password = password;
+        }
 
         db.users.update(userId, updateData);
 
@@ -23,7 +42,7 @@ export async function updateUser(userId: string, formData: FormData) {
 
     } catch (error) {
         console.error("Failed to update user:", error);
-        throw new Error("Không thể cập nhật người dùng.");
+        throw new Error(error.message || "Không thể cập nhật người dùng.");
     }
 }
 

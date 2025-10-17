@@ -5,7 +5,7 @@ import type { User } from '@/types';
 
 export async function POST(req: Request) {
   try {
-    const { username, displayName, role, password } = await req.json();
+    const { username, displayName, role, password, avatar } = await req.json();
     const trimmedUsername = username?.trim();
     const trimmedDisplayName = displayName?.trim();
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: 'Tên đăng nhập này đã tồn tại.' }, { status: 409 });
     }
 
-    const newUser = db.users.create({ username: trimmedUsername, displayName: trimmedDisplayName, role, password });
+    const newUser = db.users.create({ username: trimmedUsername, displayName: trimmedDisplayName, role, password, avatar });
     const { password: _, ...userWithoutPassword } = newUser;
 
     return NextResponse.json({ user: userWithoutPassword }, { status: 201 });

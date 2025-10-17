@@ -1,21 +1,28 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
 import EyeIcon from '@/components/icons/EyeIcon';
 import EyeOffIcon from '@/components/icons/EyeOffIcon';
+import UserCircleIcon from '@/components/icons/UserCircleIcon';
+
+const TEACHER_PIN = '4444';
 
 export default function SignUpPage() {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [role, setRole] = useState<'teacher' | 'student'>('student');
+  const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarData, setAvatarData] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const { signUp } = useSession();
   const router = useRouter();
@@ -29,6 +36,19 @@ export default function SignUpPage() {
     setUsername(value);
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const result = loadEvent.target?.result as string;
+        setAvatarPreview(result);
+        setAvatarData(result); // The full base64 data URL
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -40,6 +60,10 @@ export default function SignUpPage() {
       setError('Tên đăng nhập không được để trống.');
       return;
     }
+    if (role === 'teacher' && pin !== TEACHER_PIN) {
+        setError('Mã PIN dành cho giáo viên không chính xác.');
+        return;
+    }
     if (password.length < 6) {
       setError('Mật khẩu phải có ít nhất 6 ký tự.');
       return;
@@ -49,7 +73,7 @@ export default function SignUpPage() {
       return;
     }
     
-    const result = await signUp(username, displayName, role, password);
+    const result = await signUp(username, displayName, role, password, avatarData || undefined);
     if (result.success) {
       router.push('/dashboard');
     } else {
@@ -69,6 +93,18 @@ export default function SignUpPage() {
           </div>
           
           {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
+          
+          <div className="flex flex-col items-center gap-4">
+            {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar preview" className="w-24 h-24 rounded-full object-cover" />
+            ) : (
+                <UserCircleIcon className="w-24 h-24 text-slate-300" />
+            )}
+            <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} accept="image/*" hidden />
+            <button type="button" onClick={() => avatarInputRef.current?.click()} className="text-sm font-semibold text-primary hover:underline">
+                Tải ảnh đại diện (tùy chọn)
+            </button>
+          </div>
 
           <div>
             <label htmlFor="displayName-input" className="block text-foreground text-sm font-semibold mb-2">
@@ -98,6 +134,44 @@ export default function SignUpPage() {
             />
              <p className="text-xs text-muted-foreground mt-1">Dùng để đăng nhập. Ví dụ: nguyenvan_a sẽ trở thành nguyenvana</p>
           </div>
+
+          <div>
+            <label className="block text-foreground text-sm font-semibold mb-2">
+              Bạn là
+            </label>
+            <div className="flex rounded-md border border-border p-1 bg-background">
+                <button
+                    type="button"
+                    onClick={() => setRole('student')}
+                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'student' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                    Học sinh
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setRole('teacher')}
+                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'teacher' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                    Giáo viên
+                </button>
+            </div>
+          </div>
+          
+          {role === 'teacher' && (
+             <div>
+                <label htmlFor="pin-input" className="block text-foreground text-sm font-semibold mb-2">
+                  Mã PIN dành cho giáo viên
+                </label>
+                <input
+                    id="pin-input"
+                    type="password"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="Nhập mã PIN"
+                    className={inputClasses}
+                />
+             </div>
+          )}
 
           <div>
             <label htmlFor="password-input" className="block text-foreground text-sm font-semibold mb-2">
@@ -146,34 +220,12 @@ export default function SignUpPage() {
               </button>
             </div>
           </div>
-
-          <div>
-            <label className="block text-foreground text-sm font-semibold mb-2">
-              Bạn là
-            </label>
-            <div className="flex rounded-md border border-border p-1 bg-background">
-                <button
-                    type="button"
-                    onClick={() => setRole('student')}
-                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'student' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
-                >
-                    Học sinh
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setRole('teacher')}
-                    className={`w-1/2 py-2 rounded-sm font-semibold ${role === 'teacher' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
-                >
-                    Giáo viên
-                </button>
-            </div>
-          </div>
           
           <div>
             <button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!displayName || !username || !password || !confirmPassword}
+              disabled={!displayName || !username || !password || !confirmPassword || (role === 'teacher' && !pin)}
             >
               Đăng ký
             </button>

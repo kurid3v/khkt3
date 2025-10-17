@@ -88,7 +88,11 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
                   {roleText}
                 </span>
               </div>
-              <UserCircleIcon className="w-9 h-9 text-slate-500" />
+               {user.avatar ? (
+                <img src={user.avatar} alt="User avatar" className="w-9 h-9 rounded-full object-cover" />
+              ) : (
+                <UserCircleIcon className="w-9 h-9 text-slate-500" />
+              )}
             </button>
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-1 z-20">

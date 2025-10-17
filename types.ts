@@ -6,6 +6,7 @@ export interface User {
   displayName: string; // for display
   role: 'teacher' | 'student' | 'admin';
   password: string;
+  avatar?: string; // Base64 encoded image
 }
 
 export interface Option {

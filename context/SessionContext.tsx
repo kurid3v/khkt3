@@ -11,7 +11,7 @@ interface SessionContextType {
     impersonatedUser: UserSession | null; // The user being impersonated
     isLoading: boolean;
     login: (username: string, password: string) => Promise<boolean>;
-    signUp: (username: string, displayName: string, role: 'teacher' | 'student', password: string) => Promise<{ success: boolean; message?: string }>;
+    signUp: (username: string, displayName: string, role: 'teacher' | 'student', password: string, avatar?: string) => Promise<{ success: boolean; message?: string }>;
     logout: () => void;
     impersonate: (userToImpersonate: UserSession) => void;
     stopImpersonating: () => void;
@@ -63,12 +63,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         return false;
     };
 
-    const signUp = async (username: string, displayName: string, role: 'teacher' | 'student', password: string): Promise<{ success: boolean; message?: string }> => {
+    const signUp = async (username: string, displayName: string, role: 'teacher' | 'student', password: string, avatar?: string): Promise<{ success: boolean; message?: string }> => {
         try {
             const response = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, displayName, role, password }),
+                body: JSON.stringify({ username, displayName, role, password, avatar }),
             });
             const data = await response.json();
 
