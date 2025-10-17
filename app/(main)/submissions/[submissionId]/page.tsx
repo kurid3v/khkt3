@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -91,7 +90,10 @@ const ReadingComprehensionResult: React.FC<{
     return (
         <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
             <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-2xl font-bold text-foreground">Kết quả Đọc hiểu</h2>
+                 <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
+                    <PencilIcon />
+                    Phân tích chi tiết
+                </h2>
                  {(currentUser.role === 'teacher' || currentUser.role === 'admin') && !isEditing && (
                      <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted">
                         <PencilIcon className="h-4 w-4" /> Sửa điểm
@@ -427,7 +429,15 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
             {submission.essay ? (
                 <EssayResult problem={problem} submission={submission} currentUser={currentUser} onUpdateSubmission={updateSubmission} />
             ) : (
-                <ReadingComprehensionResult problem={problem} submission={submission} currentUser={currentUser} onUpdateSubmission={updateSubmission} />
+                <div className="space-y-8">
+                    <FeedbackDisplay 
+                        feedback={submission.feedback} 
+                        problem={problem}
+                        showDetailedFeedback={false}
+                        showGeneralSuggestions={false}
+                    />
+                    <ReadingComprehensionResult problem={problem} submission={submission} currentUser={currentUser} onUpdateSubmission={updateSubmission} />
+                </div>
             )}
         </div>
     );
