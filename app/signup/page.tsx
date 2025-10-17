@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
+import EyeIcon from '@/components/icons/EyeIcon';
+import EyeOffIcon from '@/components/icons/EyeOffIcon';
 
 export default function SignUpPage() {
   const [displayName, setDisplayName] = useState('');
@@ -12,6 +14,8 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { signUp } = useSession();
   const router = useRouter();
@@ -99,28 +103,48 @@ export default function SignUpPage() {
             <label htmlFor="password-input" className="block text-foreground text-sm font-semibold mb-2">
               Mật khẩu
             </label>
-            <input
-              id="password-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Ít nhất 6 ký tự"
-              className={inputClasses}
-            />
+            <div className="relative">
+              <input
+                id="password-input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Ít nhất 6 ký tự"
+                className={`${inputClasses} pr-10`}
+              />
+              <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                  {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label htmlFor="confirm-password-input" className="block text-foreground text-sm font-semibold mb-2">
               Xác nhận mật khẩu
             </label>
-            <input
-              id="confirm-password-input"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Nhập lại mật khẩu"
-              className={inputClasses}
-            />
+            <div className="relative">
+              <input
+                id="confirm-password-input"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Nhập lại mật khẩu"
+                className={`${inputClasses} pr-10`}
+              />
+              <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                  aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                  {showConfirmPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
 
           <div>

@@ -53,7 +53,8 @@ const TeacherSubmissionsView: React.FC<{ problem: Problem, submissions: Submissi
                                 : sub.feedback.totalScore.toFixed(2);
                             return (
                                 <tr key={sub.id} onClick={() => router.push(`/submissions/${sub.id}`)} className="cursor-pointer hover:bg-muted/50 border-b border-border last:border-b-0">
-                                    <td className="p-3 font-semibold text-foreground">{submitter?.name || 'Không rõ'}</td>
+                                    {/* FIX: Property 'name' does not exist on type 'User'. Used 'displayName' instead. */}
+                                    <td className="p-3 font-semibold text-foreground">{submitter?.displayName || 'Không rõ'}</td>
                                     <td className="p-3 text-muted-foreground text-sm">{new Date(sub.submittedAt).toLocaleString()}</td>
                                     <td className="p-3 font-bold text-primary text-right">{displayScore}</td>
                                 </tr>

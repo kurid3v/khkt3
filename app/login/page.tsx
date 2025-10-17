@@ -4,11 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
+import EyeIcon from '@/components/icons/EyeIcon';
+import EyeOffIcon from '@/components/icons/EyeOffIcon';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useSession();
   const router = useRouter();
 
@@ -59,15 +62,25 @@ export default function LoginPage() {
             <label htmlFor="password-input" className="block text-foreground text-sm font-semibold mb-2">
               Mật khẩu
             </label>
-            <input
-              id="password-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={inputClasses}
-              required
-            />
+            <div className="relative">
+              <input
+                id="password-input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`${inputClasses} pr-10`}
+                required
+              />
+              <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                  {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
 
           <div>
