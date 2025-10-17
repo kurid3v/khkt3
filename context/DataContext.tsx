@@ -18,6 +18,7 @@ interface DataContextType {
     updateProblem: (updatedProblem: Problem) => Promise<void>;
     addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => Promise<Exam | null>;
     addSubmissionAndSyncState: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => Promise<Submission | null>;
+    updateSubmission: (submissionId: string, updatedData: Partial<Submission>) => Promise<void>;
     startExamAttempt: (examId: string) => Promise<ExamAttempt | null>;
     finishExamAttempt: (attempt: ExamAttempt, newSubmissions: Submission[]) => Promise<void>;
     recordFullscreenExit: (attemptId: string) => Promise<void>;
@@ -72,6 +73,21 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
             console.error("Error adding submission and syncing state:", error);
             return null;
+        }
+    };
+
+    const updateSubmission = async (submissionId: string, updatedData: Partial<Submission>) => {
+        try {
+            const response = await fetch(`/api/submissions/${submissionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+            });
+            if (!response.ok) throw new Error('Failed to update submission');
+            const updatedSub = await response.json();
+            setSubmissions(prev => prev.map(s => s.id === submissionId ? updatedSub : s));
+        } catch (error) {
+            console.error("Error updating submission:", error);
         }
     };
 
@@ -214,6 +230,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateProblem,
         addExam,
         addSubmissionAndSyncState,
+        updateSubmission,
         startExamAttempt,
         finishExamAttempt,
         recordFullscreenExit,
