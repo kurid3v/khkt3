@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Feedback, RubricItem, Problem, Answer, Question, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
 
@@ -231,100 +232,137 @@ export async function parseRubricOnServer(rawRubricText: string): Promise<Omit<R
 }
 
 // --- READING COMPREHENSION GRADING ---
+const readingCompGradingSchema = {
+    type: Type.ARRAY,
+    description: "Một mảng kết quả chấm điểm cho từng câu hỏi tự luận.",
+    items: {
+        type: Type.OBJECT,
+        properties: {
+            questionId: { type: Type.STRING, description: "ID của câu hỏi được chấm." },
+            score: { type: Type.NUMBER, description: "Điểm cho câu trả lời, không được vượt quá điểm tối đa của câu hỏi." },
+            feedback: { type: Type.STRING, description: "Giải thích ngắn gọn tại sao cho điểm số đó và nhận xét về câu trả lời." }
+        },
+        required: ["questionId", "score", "feedback"]
+    }
+};
+
+const readingCompSystemInstruction = `Bạn là một giáo viên dạy văn có kinh nghiệm, công tâm và chấm bài rất chi tiết. Nhiệm vụ của bạn là đọc kỹ đoạn văn, sau đó chấm điểm và đưa ra nhận xét cho một loạt câu trả lời của học sinh.
+- Đọc kỹ đoạn văn chung.
+- Với mỗi câu hỏi trong danh sách, hãy:
+  1. Đọc kỹ câu hỏi, tiêu chí chấm điểm và điểm tối đa.
+  2. Đọc câu trả lời của học sinh.
+  3. So sánh câu trả lời với tiêu chí và nội dung trong đoạn văn.
+  4. Cho điểm một cách chính xác, không được cho điểm cao hơn điểm tối đa của câu hỏi.
+  5. Viết một nhận xét ngắn gọn, mang tính xây dựng, chỉ ra điểm đúng, điểm sai và cách cải thiện.
+- Trả về kết quả dưới dạng một mảng JSON theo schema đã cho, không chứa bất kỳ văn bản nào khác.`;
+
 export async function gradeReadingComprehensionOnServer(problem: Problem, answers: Answer[]): Promise<Feedback> {
     const questions = problem.questions || [];
     const passage = problem.passage || "";
+    const detailedFeedback: DetailedFeedbackItem[] = [];
     let totalScore = 0;
 
-    const gradingPromises = questions.map(async (question) => {
+    const shortAnswerQuestions = questions.filter(q => q.questionType === 'short_answer');
+    const multipleChoiceQuestions = questions.filter(q => q.questionType === 'multiple_choice');
+
+    // 1. Grade multiple choice questions deterministically
+    const mcResults: { [key: string]: DetailedFeedbackItem } = {};
+    for (const question of multipleChoiceQuestions) {
         const studentAnswer = answers.find(a => a.questionId === question.id);
+        const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
+        const score = isCorrect ? 1 : 0;
+        const correctOptionText = question.options?.find(o => o.id === question.correctOptionId)?.text;
+        const feedback = isCorrect 
+            ? "Bạn đã trả lời đúng." 
+            : `Bạn đã trả lời sai. Đáp án đúng là: "${correctOptionText}"`;
+        mcResults[question.id] = { criterion: question.questionText, score, feedback, questionId: question.id };
+    }
 
-        if (question.questionType === 'multiple_choice') {
-            const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
-            const score = isCorrect ? 1 : 0;
-            const correctOptionText = question.options?.find(o => o.id === question.correctOptionId)?.text;
-            const feedback = isCorrect 
-                ? "Bạn đã trả lời đúng." 
-                : `Bạn đã trả lời sai. Đáp án đúng là: "${correctOptionText}"`;
-            return { criterion: question.questionText, score, feedback };
-        }
+    // 2. Grade short answer questions in a single batch API call
+    const saResults: { [key: string]: DetailedFeedbackItem } = {};
+    if (shortAnswerQuestions.length > 0) {
+        const questionsToGrade = shortAnswerQuestions.map(q => {
+            const studentAnswer = answers.find(a => a.questionId === q.id);
+            return {
+                questionId: q.id,
+                questionText: q.questionText,
+                maxScore: q.maxScore || 1,
+                gradingCriteria: q.gradingCriteria || "Dựa vào đoạn văn để đánh giá.",
+                studentAnswer: studentAnswer?.writtenAnswer || "Học sinh không trả lời."
+            };
+        });
 
-        if (question.questionType === 'short_answer') {
-            if (studentAnswer?.writtenAnswer && studentAnswer.writtenAnswer.trim()) {
-                const maxScore = question.maxScore || 1;
-                const prompt = `
-                    Dựa vào đoạn trích sau:
-                    """${passage}"""
+        const prompt = `
+            **Đoạn văn:**
+            """${passage}"""
 
-                    Câu hỏi: "${question.questionText}"
-                    ${question.gradingCriteria ? `Tiêu chí chấm/Đáp án mẫu: "${question.gradingCriteria}"` : ''}
+            **Hướng dẫn:** Vui lòng chấm điểm các câu trả lời sau đây dựa trên đoạn văn và tiêu chí cho từng câu.
+            
+            **Danh sách câu trả lời cần chấm:**
+            ${JSON.stringify(questionsToGrade, null, 2)}
+        `.trim();
 
-                    Câu trả lời của học sinh:
-                    """${studentAnswer.writtenAnswer}"""
-
-                    Hãy chấm điểm câu trả lời này trên thang điểm ${maxScore} và đưa ra nhận xét ngắn gọn.
-                `.trim();
-
-                try {
-                    const shortAnswerGradingSchema = {
-                        type: Type.OBJECT,
-                        properties: {
-                            score: { type: Type.NUMBER, description: `Điểm cho câu trả lời này, trên thang điểm ${maxScore}.` },
-                            feedback: { type: Type.STRING, description: "Giải thích ngắn gọn tại sao cho điểm số đó. Nếu sai, hãy chỉ ra điểm sai." }
-                        },
-                        required: ["score", "feedback"]
-                    };
-
-                    const response = await ai.models.generateContent({
-                        model: "gemini-2.5-flash",
-                        contents: prompt,
-                        config: {
-                            systemInstruction: `Bạn là một giáo viên văn chấm bài tự luận ngắn. Hãy chấm điểm công tâm dựa trên tiêu chí và cho điểm không vượt quá ${maxScore}.`,
-                            responseMimeType: "application/json",
-                            responseSchema: shortAnswerGradingSchema,
-                            temperature: 0.1,
-                        }
-                    });
-                    const jsonText = extractJson(response.text);
-                    if (jsonText) {
-                        const result = JSON.parse(jsonText) as { score: number, feedback: string };
-                        const clampedScore = Math.max(0, Math.min(result.score, maxScore));
-                        return { criterion: question.questionText, score: clampedScore, feedback: result.feedback };
-                    }
-                } catch (err) {
-                    console.error(`Failed to grade short answer for question ${question.id}`, err);
+        try {
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+                config: {
+                    systemInstruction: readingCompSystemInstruction,
+                    responseMimeType: "application/json",
+                    responseSchema: readingCompGradingSchema,
+                    temperature: 0.1,
                 }
+            });
+
+            const jsonText = extractJson(response.text);
+            if (jsonText) {
+                const results = JSON.parse(jsonText) as { questionId: string, score: number, feedback: string }[];
+                const resultsMap = new Map(results.map(r => [r.questionId, r]));
+                
+                for (const question of shortAnswerQuestions) {
+                    const result = resultsMap.get(question.id);
+                    const maxScore = question.maxScore || 1;
+                    if (result) {
+                        const clampedScore = Math.max(0, Math.min(result.score, maxScore));
+                        saResults[question.id] = { criterion: question.questionText, score: clampedScore, feedback: result.feedback, questionId: question.id };
+                    } else {
+                         saResults[question.id] = { criterion: question.questionText, score: 0, feedback: "AI không thể chấm câu trả lời này.", questionId: question.id };
+                    }
+                }
+            } else {
+                 throw new Error("AI response for short answers was empty or invalid.");
             }
-             // Handle no answer or AI error
-            return { criterion: question.questionText, score: 0, feedback: "Không có câu trả lời hoặc đã xảy ra lỗi khi chấm." };
+        } catch (err) {
+            console.error(`Failed to batch grade short answers`, err);
+            // If batch fails, provide a default error feedback for all short answers
+            for (const question of shortAnswerQuestions) {
+                saResults[question.id] = { criterion: question.questionText, score: 0, feedback: "Đã xảy ra lỗi trong quá trình chấm bài tự động.", questionId: question.id };
+            }
         }
-        
-        // Fallback for unknown question types
-        return { criterion: question.questionText, score: 0, feedback: "Loại câu hỏi không xác định." };
-    });
+    }
 
-    const results = await Promise.all(gradingPromises);
+    // 3. Combine results in the original order
+    for (const question of questions) {
+        const result = mcResults[question.id] || saResults[question.id];
+        if (result) {
+            detailedFeedback.push(result);
+            totalScore += result.score;
+        }
+    }
     
-    const feedbackMap = new Map<string, DetailedFeedbackItem>();
-    results.forEach(item => {
-        totalScore += item.score;
-        feedbackMap.set(item.criterion, item);
-    });
-
-    const orderedFeedback = questions.map(q => feedbackMap.get(q.questionText)!);
-
     const totalMaxScore = questions.reduce((acc, q) => {
         if (q.questionType === 'multiple_choice') return acc + 1;
         return acc + (q.maxScore || 1);
     }, 0);
 
     return {
-        detailedFeedback: orderedFeedback,
+        detailedFeedback,
         totalScore,
         maxScore: totalMaxScore,
-        generalSuggestions: [],
+        generalSuggestions: [], // No general suggestions for reading comprehension for now
     };
 }
+
 
 // --- IMAGE TO TEXT (OCR) ---
 export async function imageToTextOnServer(base64Image: string): Promise<string> {

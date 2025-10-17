@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   username: string; // for login
@@ -105,6 +104,7 @@ export interface DetailedFeedbackItem {
   criterion: string; // For essays, the criterion name. For reading comp, the question text.
   score: number; // For essays, the score. For reading comp, 1 for correct, 0 for incorrect.
   feedback: string; // For essays, detailed feedback. For reading comp, explanation of the correct answer.
+  questionId?: string;
 }
 
 export interface Feedback {

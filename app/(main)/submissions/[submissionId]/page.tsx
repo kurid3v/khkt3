@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,6 +21,7 @@ const ReadingComprehensionResult: React.FC<{
 }> = ({ problem, submission, currentUser, onUpdateSubmission }) => {
     const questions: Question[] = problem.questions || [];
     const [isEditing, setIsEditing] = useState(false);
+    // Use questionId as key for robustness
     const [editedScores, setEditedScores] = useState<{ [questionId: string]: number }>({});
     const [editedFeedbacks, setEditedFeedbacks] = useState<{ [questionId: string]: string }>({});
 
@@ -30,10 +30,11 @@ const ReadingComprehensionResult: React.FC<{
         const initialFeedbacks: { [questionId: string]: string } = {};
         
         submission.feedback.detailedFeedback.forEach(item => {
-            const question = questions.find(q => q.questionText === item.criterion);
-            if (question) {
-                initialScores[question.id] = item.score;
-                initialFeedbacks[question.id] = item.feedback;
+            // Prioritize questionId if it exists, fall back to matching text for older data
+            const qId = item.questionId || questions.find(q => q.questionText === item.criterion)?.id;
+            if (qId) {
+                initialScores[qId] = item.score;
+                initialFeedbacks[qId] = item.feedback;
             }
         });
         setEditedScores(initialScores);
@@ -42,10 +43,14 @@ const ReadingComprehensionResult: React.FC<{
 
     const handleSave = async () => {
         const newDetailedFeedback: DetailedFeedbackItem[] = questions.map(q => {
+            const score = editedScores[q.id] ?? 0;
+            const feedback = editedFeedbacks[q.id] ?? '';
+            const originalFeedback = submission.feedback.detailedFeedback.find(item => (item.questionId || questions.find(q => q.questionText === item.criterion)?.id) === q.id);
             return {
-                criterion: q.questionText,
-                score: editedScores[q.id] ?? 0,
-                feedback: editedFeedbacks[q.id] ?? ''
+                ...(originalFeedback || { criterion: q.questionText }),
+                questionId: q.id,
+                score,
+                feedback,
             };
         });
 
@@ -56,7 +61,7 @@ const ReadingComprehensionResult: React.FC<{
             return acc + (q.maxScore || 1);
         }, 0);
 
-        const updatedFeedback = {
+        const updatedFeedback: Feedback = {
             ...submission.feedback,
             detailedFeedback: newDetailedFeedback,
             totalScore: newTotalScore,
@@ -68,13 +73,14 @@ const ReadingComprehensionResult: React.FC<{
     };
 
     const handleCancel = () => {
+        // Same logic as useEffect to reset state
         const initialScores: { [questionId: string]: number } = {};
         const initialFeedbacks: { [questionId: string]: string } = {};
         submission.feedback.detailedFeedback.forEach(item => {
-            const question = questions.find(q => q.questionText === item.criterion);
-            if (question) {
-                initialScores[question.id] = item.score;
-                initialFeedbacks[question.id] = item.feedback;
+             const qId = item.questionId || questions.find(q => q.questionText === item.criterion)?.id;
+            if (qId) {
+                initialScores[qId] = item.score;
+                initialFeedbacks[qId] = item.feedback;
             }
         });
         setEditedScores(initialScores);
@@ -100,26 +106,62 @@ const ReadingComprehensionResult: React.FC<{
             <div className="space-y-6">
             {questions.map((q, index) => {
                 const answer = submission.answers?.find(a => a.questionId === q.id);
-                const originalFeedbackItem = submission.feedback.detailedFeedback.find(f => f.criterion === q.questionText);
+                const originalFeedbackItem = submission.feedback.detailedFeedback.find(f => (f.questionId || questions.find(q => q.questionText === f.criterion)?.id) === q.id);
                 const maxScore = q.questionType === 'multiple_choice' ? 1 : (q.maxScore || 1);
-                const isCorrect = originalFeedbackItem?.score === maxScore;
+                const isCorrect = originalFeedbackItem ? originalFeedbackItem.score === maxScore : false;
+                
+                let borderColorClass = 'border-border';
+                if (originalFeedbackItem) {
+                    const percentage = maxScore > 0 ? (originalFeedbackItem.score / maxScore) * 100 : 0;
+                    if (percentage >= 80) borderColorClass = 'border-green-400';
+                    else if (percentage >= 50) borderColorClass = 'border-yellow-400';
+                    else borderColorClass = 'border-red-400';
+                }
 
                 return (
-                    <div key={q.id} className="border-b border-border pb-6 last:border-b-0">
-                        <p className="font-semibold text-foreground mb-2">Câu {index + 1}: {q.questionText}</p>
+                    <div key={q.id} className={`bg-card p-5 rounded-lg border-l-4 shadow-sm ${borderColorClass}`}>
+                        <div className="flex justify-between items-start gap-4">
+                            <p className="font-semibold text-foreground flex-1">Câu {index + 1}: {q.questionText}</p>
+                            <div className="flex items-center gap-2">
+                                {isEditing && q.questionType === 'short_answer' && (
+                                    <>
+                                        <input 
+                                            type="number"
+                                            value={editedScores[q.id] ?? ''}
+                                            onChange={e => {
+                                                const score = parseFloat(e.target.value);
+                                                const clampedScore = isNaN(score) ? 0 : Math.max(0, Math.min(score, maxScore));
+                                                setEditedScores(prev => ({...prev, [q.id]: clampedScore }))
+                                            }}
+                                            className="w-20 p-1 border border-border rounded-md text-center font-bold"
+                                            step="0.25"
+                                            max={maxScore}
+                                            min="0"
+                                        />
+                                         <span className="font-semibold text-muted-foreground">/ {maxScore}</span>
+                                    </>
+                                )}
+                                {!isEditing && (
+                                    <span className={`font-bold text-lg px-3 py-1 rounded-full whitespace-nowrap ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        {originalFeedbackItem?.score.toFixed(2).replace(/\.00$/, '') ?? 'N/A'} / {maxScore}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                         
+                        <div className="mt-4 space-y-4">
                         {q.questionType === 'multiple_choice' ? (
                             <div className="space-y-2">
                                 {q.options?.map(opt => {
                                     const isSelected = answer?.selectedOptionId === opt.id;
                                     const isCorrectAnswer = q.correctOptionId === opt.id;
-                                    let stateClass = '';
+                                    let stateClass = 'bg-background';
                                     if (isSelected && !isCorrectAnswer) stateClass = 'bg-red-100 border-red-300';
                                     if (isCorrectAnswer) stateClass = 'bg-green-100 border-green-300';
                                     
                                     return (
                                         <div key={opt.id} className={`flex items-start gap-3 p-3 rounded-md border ${stateClass}`}>
-                                            <div className="flex-shrink-0 mt-1">
+                                            <div className="flex-shrink-0 mt-1 h-6 w-6 text-slate-700">
                                                 {isCorrectAnswer ? <CheckIcon /> : (isSelected ? <XCircleIcon /> : <div className="w-6 h-6" />)}
                                             </div>
                                             <span className="text-foreground">{opt.text}</span>
@@ -128,11 +170,17 @@ const ReadingComprehensionResult: React.FC<{
                                 })}
                             </div>
                         ) : ( // Short answer
-                             <div className="space-y-3">
+                             <div className="space-y-4">
                                 <div className="p-4 bg-background rounded-lg border border-border">
                                     <p className="text-sm font-semibold text-muted-foreground mb-1">Câu trả lời của học sinh</p>
                                     <p className="text-foreground whitespace-pre-wrap">{answer?.writtenAnswer || 'Không có câu trả lời.'}</p>
                                 </div>
+                                {q.gradingCriteria && (
+                                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <p className="text-sm font-semibold text-green-800 mb-1">Đáp án mẫu / Tiêu chí chấm</p>
+                                        <p className="text-green-900 whitespace-pre-wrap">{q.gradingCriteria}</p>
+                                    </div>
+                                )}
                                 <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200">
                                     <p className="text-sm font-semibold text-blue-800 mb-1">Nhận xét</p>
                                     {isEditing ? (
@@ -149,28 +197,6 @@ const ReadingComprehensionResult: React.FC<{
                                 </div>
                              </div>
                         )}
-
-                        <div className="mt-3 flex items-center justify-end gap-2">
-                            <span className="text-sm font-semibold text-muted-foreground">Điểm:</span>
-                            {isEditing ? (
-                                <input 
-                                    type="number"
-                                    value={editedScores[q.id] ?? ''}
-                                    onChange={e => {
-                                        const score = parseFloat(e.target.value);
-                                        const clampedScore = isNaN(score) ? 0 : Math.max(0, Math.min(score, maxScore));
-                                        setEditedScores(prev => ({...prev, [q.id]: clampedScore }))
-                                    }}
-                                    className="w-20 p-1 border border-border rounded-md text-center font-bold"
-                                    step="0.25"
-                                    max={maxScore}
-                                    min="0"
-                                />
-                            ) : (
-                                <span className={`font-bold text-lg px-3 py-1 rounded-full ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {originalFeedbackItem?.score.toFixed(2).replace(/\.00$/, '') ?? 'N/A'} / {maxScore}
-                                </span>
-                            )}
                         </div>
                     </div>
                 );
