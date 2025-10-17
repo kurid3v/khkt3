@@ -95,8 +95,11 @@ export async function createProblem(data: {
         } : {
             passage: data.passage,
             questions: data.questions,
-            // Reading comprehension score is based on number of questions
-            customMaxScore: data.questions?.length || 0,
+            // Reading comprehension score is calculated from questions
+            customMaxScore: data.questions?.reduce((acc, q) => {
+                if (q.questionType === 'multiple_choice') return acc + 1;
+                return acc + (q.maxScore || 1); // default short answer to 1 point if not set
+            }, 0) || 0,
         })
     };
 

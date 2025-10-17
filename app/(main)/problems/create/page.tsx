@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition, Suspense } from 'react';
@@ -67,9 +68,11 @@ function CreateProblemForm() {
                 const newOptionId = crypto.randomUUID();
                 newQ.options = [{ id: newOptionId, text: '' }];
                 newQ.correctOptionId = newOptionId;
+                delete newQ.maxScore; // MC is always 1 point
             } else if (type === 'short_answer') {
                 delete newQ.options;
                 delete newQ.correctOptionId;
+                newQ.maxScore = 1; // Default max score
             }
             return newQ;
         }
@@ -79,6 +82,10 @@ function CreateProblemForm() {
   const updateGradingCriteria = (qId: string, text: string) => {
     setQuestions(questions.map(q => q.id === qId ? { ...q, gradingCriteria: text } : q));
   }
+   const updateQuestionMaxScore = (qId: string, value: string) => {
+    const score = parseFloat(value);
+    setQuestions(questions.map(q => q.id === qId ? { ...q, maxScore: isNaN(score) ? undefined : score } : q));
+  };
   const addOption = (qId: string) => {
     setQuestions(questions.map(q => q.id === qId ? { ...q, options: [...(q.options || []), { id: crypto.randomUUID(), text: '' }] } : q));
   };
@@ -318,6 +325,19 @@ function CreateProblemForm() {
                             className="w-full p-2 border border-border rounded-md bg-card text-sm"
                             rows={2}
                         />
+                         <div className="flex items-center gap-2 pt-2">
+                            <label htmlFor={`maxscore-${q.id}`} className="text-sm font-semibold text-muted-foreground">Điểm tối đa:</label>
+                            <input
+                                id={`maxscore-${q.id}`}
+                                type="number"
+                                value={q.maxScore || ''}
+                                onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
+                                className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
+                                placeholder="1"
+                                min="0.25"
+                                step="0.25"
+                            />
+                        </div>
                     </div>
                   )}
                 </div>

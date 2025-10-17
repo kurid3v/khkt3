@@ -231,15 +231,6 @@ export async function parseRubricOnServer(rawRubricText: string): Promise<Omit<R
 }
 
 // --- READING COMPREHENSION GRADING ---
-const shortAnswerGradingSchema = {
-    type: Type.OBJECT,
-    properties: {
-        score: { type: Type.NUMBER, description: "Điểm cho câu trả lời này, thang điểm 1. Cho 1 điểm nếu đúng/đủ ý, 0.5 nếu có ý đúng nhưng chưa đủ, 0 nếu sai hoàn toàn." },
-        feedback: { type: Type.STRING, description: "Giải thích ngắn gọn tại sao cho điểm số đó. Nếu sai, hãy chỉ ra điểm sai." }
-    },
-    required: ["score", "feedback"]
-};
-
 export async function gradeReadingComprehensionOnServer(problem: Problem, answers: Answer[]): Promise<Feedback> {
     const questions = problem.questions || [];
     const passage = problem.passage || "";
@@ -260,6 +251,7 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
 
         if (question.questionType === 'short_answer') {
             if (studentAnswer?.writtenAnswer && studentAnswer.writtenAnswer.trim()) {
+                const maxScore = question.maxScore || 1;
                 const prompt = `
                     Dựa vào đoạn trích sau:
                     """${passage}"""
@@ -270,15 +262,24 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
                     Câu trả lời của học sinh:
                     """${studentAnswer.writtenAnswer}"""
 
-                    Hãy chấm điểm câu trả lời này trên thang điểm 1 và đưa ra nhận xét ngắn gọn.
+                    Hãy chấm điểm câu trả lời này trên thang điểm ${maxScore} và đưa ra nhận xét ngắn gọn.
                 `.trim();
 
                 try {
+                    const shortAnswerGradingSchema = {
+                        type: Type.OBJECT,
+                        properties: {
+                            score: { type: Type.NUMBER, description: `Điểm cho câu trả lời này, trên thang điểm ${maxScore}.` },
+                            feedback: { type: Type.STRING, description: "Giải thích ngắn gọn tại sao cho điểm số đó. Nếu sai, hãy chỉ ra điểm sai." }
+                        },
+                        required: ["score", "feedback"]
+                    };
+
                     const response = await ai.models.generateContent({
                         model: "gemini-2.5-flash",
                         contents: prompt,
                         config: {
-                            systemInstruction: "Bạn là một giáo viên văn chấm bài tự luận ngắn. Hãy chấm điểm công tâm dựa trên tiêu chí và đưa ra nhận xét súc tích.",
+                            systemInstruction: `Bạn là một giáo viên văn chấm bài tự luận ngắn. Hãy chấm điểm công tâm dựa trên tiêu chí và cho điểm không vượt quá ${maxScore}.`,
                             responseMimeType: "application/json",
                             responseSchema: shortAnswerGradingSchema,
                             temperature: 0.1,
@@ -287,7 +288,8 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
                     const jsonText = extractJson(response.text);
                     if (jsonText) {
                         const result = JSON.parse(jsonText) as { score: number, feedback: string };
-                        return { criterion: question.questionText, score: result.score, feedback: result.feedback };
+                        const clampedScore = Math.max(0, Math.min(result.score, maxScore));
+                        return { criterion: question.questionText, score: clampedScore, feedback: result.feedback };
                     }
                 } catch (err) {
                     console.error(`Failed to grade short answer for question ${question.id}`, err);
@@ -311,10 +313,15 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
 
     const orderedFeedback = questions.map(q => feedbackMap.get(q.questionText)!);
 
+    const totalMaxScore = questions.reduce((acc, q) => {
+        if (q.questionType === 'multiple_choice') return acc + 1;
+        return acc + (q.maxScore || 1);
+    }, 0);
+
     return {
         detailedFeedback: orderedFeedback,
         totalScore,
-        maxScore: questions.length,
+        maxScore: totalMaxScore,
         generalSuggestions: [],
     };
 }

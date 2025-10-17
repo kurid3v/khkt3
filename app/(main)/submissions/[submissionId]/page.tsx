@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -49,10 +51,16 @@ const ReadingComprehensionResult: React.FC<{
 
         const newTotalScore = newDetailedFeedback.reduce((acc, item) => acc + item.score, 0);
 
+        const newMaxScore = questions.reduce((acc, q) => {
+            if (q.questionType === 'multiple_choice') return acc + 1;
+            return acc + (q.maxScore || 1);
+        }, 0);
+
         const updatedFeedback = {
             ...submission.feedback,
             detailedFeedback: newDetailedFeedback,
             totalScore: newTotalScore,
+            maxScore: newMaxScore,
         };
 
         await onUpdateSubmission(submission.id, { feedback: updatedFeedback });
@@ -93,7 +101,8 @@ const ReadingComprehensionResult: React.FC<{
             {questions.map((q, index) => {
                 const answer = submission.answers?.find(a => a.questionId === q.id);
                 const originalFeedbackItem = submission.feedback.detailedFeedback.find(f => f.criterion === q.questionText);
-                const isCorrect = originalFeedbackItem?.score === 1;
+                const maxScore = q.questionType === 'multiple_choice' ? 1 : (q.maxScore || 1);
+                const isCorrect = originalFeedbackItem?.score === maxScore;
 
                 return (
                     <div key={q.id} className="border-b border-border pb-6 last:border-b-0">
@@ -143,22 +152,23 @@ const ReadingComprehensionResult: React.FC<{
 
                         <div className="mt-3 flex items-center justify-end gap-2">
                             <span className="text-sm font-semibold text-muted-foreground">Điểm:</span>
-                            {isEditing && q.questionType === 'short_answer' ? (
+                            {isEditing ? (
                                 <input 
                                     type="number"
                                     value={editedScores[q.id] ?? ''}
                                     onChange={e => {
                                         const score = parseFloat(e.target.value);
-                                        setEditedScores(prev => ({...prev, [q.id]: isNaN(score) ? 0 : score }))
+                                        const clampedScore = isNaN(score) ? 0 : Math.max(0, Math.min(score, maxScore));
+                                        setEditedScores(prev => ({...prev, [q.id]: clampedScore }))
                                     }}
                                     className="w-20 p-1 border border-border rounded-md text-center font-bold"
                                     step="0.25"
-                                    max="1"
+                                    max={maxScore}
                                     min="0"
                                 />
                             ) : (
                                 <span className={`font-bold text-lg px-3 py-1 rounded-full ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {originalFeedbackItem?.score.toFixed(2).replace(/\.00$/, '') ?? 'N/A'} / 1
+                                    {originalFeedbackItem?.score.toFixed(2).replace(/\.00$/, '') ?? 'N/A'} / {maxScore}
                                 </span>
                             )}
                         </div>

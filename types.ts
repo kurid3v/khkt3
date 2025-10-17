@@ -25,6 +25,7 @@ export interface Question {
   
   // Short answer fields
   gradingCriteria?: string; // Model answer or criteria for AI
+  maxScore?: number;
 }
 
 export interface Problem {
@@ -33,6 +34,7 @@ export interface Problem {
   createdBy: string; // userId of teacher
   createdAt: number;
   examId?: string; // ID of the exam this problem belongs to
+  customMaxScore?: number;
 
   type: 'essay' | 'reading_comprehension';
 
@@ -40,7 +42,6 @@ export interface Problem {
   prompt?: string;
   rawRubric?: string;
   rubricItems?: RubricItem[];
-  customMaxScore?: number;
   isRubricHidden?: boolean;
 
   // Reading comprehension-specific fields
