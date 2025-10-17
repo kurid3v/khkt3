@@ -1,10 +1,10 @@
-
 'use client';
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import type { User } from '../types';
+import UserCircleIcon from './icons/UserCircleIcon';
 
 interface HeaderProps {
   user: Omit<User, 'password'>;
@@ -14,6 +14,8 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
   const { logout } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -46,6 +48,17 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
         </Link>
     );
   };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="bg-card border-b sticky top-0 z-10">
@@ -64,18 +77,33 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
             </nav>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right">
-            <span className="font-semibold text-foreground">{user.displayName}</span>
-            <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>
-              {roleText}
-            </span>
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 cursor-pointer p-1 rounded-md hover:bg-muted"
+            >
+              <div className="text-right">
+                <span className="font-semibold text-foreground">{user.displayName}</span>
+                <span className={`block text-xs font-medium text-muted-foreground`}>
+                  {roleText}
+                </span>
+              </div>
+              <UserCircleIcon className="w-9 h-9 text-slate-500" />
+            </button>
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-1 z-20">
+                <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-foreground hover:bg-muted">
+                  Hồ sơ của tôi
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted"
-          >
-            Đăng xuất
-          </button>
         </div>
       </div>
     </header>

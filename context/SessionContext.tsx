@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
@@ -8,27 +7,38 @@ type UserSession = Omit<User, 'password'>;
 
 interface SessionContextType {
     currentUser: UserSession | null;
+    loggedInUser: UserSession | null; // The actual user who is logged in
+    impersonatedUser: UserSession | null; // The user being impersonated
     isLoading: boolean;
     login: (username: string, password: string) => Promise<boolean>;
     signUp: (username: string, displayName: string, role: 'teacher' | 'student', password: string) => Promise<{ success: boolean; message?: string }>;
     logout: () => void;
+    impersonate: (userToImpersonate: UserSession) => void;
+    stopImpersonating: () => void;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+    const [loggedInUser, setLoggedInUser] = useState<UserSession | null>(null);
+    const [impersonatedUser, setImpersonatedUser] = useState<UserSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const currentUser = impersonatedUser || loggedInUser;
 
     useEffect(() => {
         try {
-            const loggedInUserJson = sessionStorage.getItem('currentUser');
+            const loggedInUserJson = sessionStorage.getItem('loggedInUser');
+            const impersonatedUserJson = sessionStorage.getItem('impersonatedUser');
             if (loggedInUserJson) {
-                setCurrentUser(JSON.parse(loggedInUserJson));
+                setLoggedInUser(JSON.parse(loggedInUserJson));
+            }
+            if (impersonatedUserJson) {
+                setImpersonatedUser(JSON.parse(impersonatedUserJson));
             }
         } catch (error) {
             console.error("Failed to parse user from session storage", error);
-            sessionStorage.removeItem('currentUser');
+            sessionStorage.clear();
         } finally {
             setIsLoading(false);
         }
@@ -43,8 +53,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
             });
             if (response.ok) {
                 const userSession = await response.json();
-                setCurrentUser(userSession);
-                sessionStorage.setItem('currentUser', JSON.stringify(userSession));
+                setLoggedInUser(userSession);
+                sessionStorage.setItem('loggedInUser', JSON.stringify(userSession));
                 return true;
             }
         } catch (error) {
@@ -64,8 +74,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
             if (response.ok) {
                 const { user } = data;
-                setCurrentUser(user);
-                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                setLoggedInUser(user);
+                sessionStorage.setItem('loggedInUser', JSON.stringify(user));
                 return { success: true };
             }
             return { success: false, message: data.message || 'Signup failed' };
@@ -76,13 +86,34 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
     
     const logout = () => {
-        setCurrentUser(null);
-        sessionStorage.removeItem('currentUser');
+        setLoggedInUser(null);
+        setImpersonatedUser(null);
+        sessionStorage.removeItem('loggedInUser');
+        sessionStorage.removeItem('impersonatedUser');
     };
     
+    const impersonate = (userToImpersonate: UserSession) => {
+        if (loggedInUser?.role === 'admin') {
+            setImpersonatedUser(userToImpersonate);
+            sessionStorage.setItem('impersonatedUser', JSON.stringify(userToImpersonate));
+        }
+    };
+
+    const stopImpersonating = () => {
+        setImpersonatedUser(null);
+        sessionStorage.removeItem('impersonatedUser');
+    };
+
     const value: SessionContextType = {
-        currentUser, isLoading,
-        login, signUp, logout,
+        currentUser, 
+        loggedInUser,
+        impersonatedUser,
+        isLoading,
+        login, 
+        signUp, 
+        logout,
+        impersonate,
+        stopImpersonating,
     };
 
     return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

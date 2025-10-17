@@ -1,17 +1,16 @@
-
-
 'use client';
 import React, { useState, useMemo, useTransition, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
+import { useSession } from '@/context/SessionContext';
 import Pagination from '@/components/Pagination';
 import type { User, Problem, Exam } from '@/types';
 import PencilIcon from '@/components/icons/PencilIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { deleteProblem } from '@/app/actions';
-import { removeExam } from '@/app/actions';
+import { deleteProblem, removeExam, deleteUser } from '@/app/actions';
+import SwitchUserIcon from '@/components/icons/SwitchUserIcon';
 
 
 type ActiveTab = 'users' | 'problems' | 'submissions' | 'exams';
@@ -20,10 +19,10 @@ const ITEMS_PER_PAGE = 10;
 
 export default function AdminDashboardPage() {
     const router = useRouter();
-    const { users, problems, submissions, exams, updateUserRole } = useDataContext();
+    const { users, problems, submissions, exams, isLoading } = useDataContext();
+    const { impersonate, loggedInUser } = useSession();
 
     const [activeTab, setActiveTab] = useState<ActiveTab>('users');
-    const [editingUser, setEditingUser] = useState<{ id: string; role: 'teacher' | 'student' | 'admin' } | null>(null);
     const [currentPages, setCurrentPages] = useState<{ [key in ActiveTab]: number }>({
         users: 1,
         problems: 1,
@@ -32,6 +31,7 @@ export default function AdminDashboardPage() {
     });
     const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
     const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+    const [userToDelete, setUserToDelete] = useState<Omit<User, 'password'> | null>(null);
     const [isPending, startTransition] = useTransition();
 
     const [optimisticProblems, setOptimisticProblems] = useOptimistic(
@@ -43,33 +43,17 @@ export default function AdminDashboardPage() {
         exams,
         (state, examId: string) => state.filter(e => e.id !== examId)
     );
+    
+    const [optimisticUsers, setOptimisticUsers] = useOptimistic(
+        users,
+        (state, userId: string) => state.filter(u => u.id !== userId)
+    );
 
     const sortedSubmissions = useMemo(() => 
         [...submissions].sort((a, b) => b.submittedAt - a.submittedAt),
         [submissions]
     );
-
-    const handleEditUserClick = (user: Omit<User, 'password'>) => {
-        setEditingUser({ id: user.id, role: user.role });
-    };
-
-    const handleCancelEdit = () => {
-        setEditingUser(null);
-    };
-
-    const handleSaveUserRole = () => {
-        if (editingUser) {
-            updateUserRole(editingUser.id, editingUser.role);
-            setEditingUser(null);
-        }
-    };
     
-    const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        if (editingUser) {
-            setEditingUser({ ...editingUser, role: e.target.value as 'teacher' | 'student' | 'admin' });
-        }
-    };
-
     const handleDeleteProblemClick = (problem: Problem) => {
         setProblemToDelete(problem);
     };
@@ -97,15 +81,29 @@ export default function AdminDashboardPage() {
             setExamToDelete(null);
         }
     };
+
+    const handleDeleteUserClick = (user: Omit<User, 'password'>) => {
+        setUserToDelete(user);
+    };
+    
+    const confirmDeleteUser = () => {
+        if (userToDelete) {
+            startTransition(async () => {
+                setOptimisticUsers(userToDelete.id);
+                await deleteUser(userToDelete.id);
+            });
+            setUserToDelete(null);
+        }
+    };
     
     const handlePageChange = (tab: ActiveTab, page: number) => {
         setCurrentPages(prev => ({ ...prev, [tab]: page }));
     };
 
     // Pagination Logic
-    const usersTotalPages = Math.ceil(users.length / ITEMS_PER_PAGE);
+    const usersTotalPages = Math.ceil(optimisticUsers.length / ITEMS_PER_PAGE);
     const usersStartIndex = (currentPages.users - 1) * ITEMS_PER_PAGE;
-    const displayedUsers = users.slice(usersStartIndex, usersStartIndex + ITEMS_PER_PAGE);
+    const displayedUsers = optimisticUsers.slice(usersStartIndex, usersStartIndex + ITEMS_PER_PAGE);
 
     const problemsTotalPages = Math.ceil(optimisticProblems.length / ITEMS_PER_PAGE);
     const problemsStartIndex = (currentPages.problems - 1) * ITEMS_PER_PAGE;
@@ -171,37 +169,26 @@ export default function AdminDashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {displayedUsers.map((user, index) => (
-                                                <tr key={user.id} className={`${trClass} ${index % 2 === 0 ? 'bg-transparent' : 'bg-muted/30'}`}>
+                                            {displayedUsers.map((user) => {
+                                                const isSelf = user.id === loggedInUser?.id;
+                                                return (
+                                                <tr key={user.id} className={`${trClass} hover:bg-muted/30`}>
                                                     <td className={`${tdClass} font-semibold`}>{user.displayName}</td>
                                                     <td className={`${tdClass}`}>{user.username}</td>
-                                                    <td className={tdClass}>
-                                                        {editingUser?.id === user.id ? (
-                                                            <select
-                                                                value={editingUser.role}
-                                                                onChange={handleRoleChange}
-                                                                className="p-1 border border-border rounded-md bg-background"
-                                                            >
-                                                                <option value="student">student</option>
-                                                                <option value="teacher">teacher</option>
-                                                                <option value="admin">admin</option>
-                                                            </select>
-                                                        ) : (
-                                                            user.role
-                                                        )}
-                                                    </td>
-                                                    <td className={tdClass}>
-                                                        {editingUser?.id === user.id ? (
-                                                            <div className="flex gap-2">
-                                                                <button onClick={handleSaveUserRole} className="text-sm font-semibold text-green-600 hover:text-green-800">Lưu</button>
-                                                                <button onClick={handleCancelEdit} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Hủy</button>
-                                                            </div>
-                                                        ) : (
-                                                            <button onClick={() => handleEditUserClick(user)} className="text-sm font-semibold text-primary hover:text-primary/80">Chỉnh sửa</button>
-                                                        )}
+                                                    <td className={tdClass}>{user.role}</td>
+                                                    <td className={`${tdClass}`}>
+                                                        <div className="flex items-center gap-1">
+                                                            {!isSelf && (
+                                                                <button onClick={() => impersonate(user)} className="p-2 text-muted-foreground hover:text-yellow-600" title="Mạo danh"><SwitchUserIcon className="h-5 w-5" /></button>
+                                                            )}
+                                                            <button onClick={() => router.push(`/admin/users/${user.id}/edit`)} className="p-2 text-muted-foreground hover:text-primary" title="Chỉnh sửa"><PencilIcon className="h-5 w-5" /></button>
+                                                            {!isSelf && user.username !== 'adminuser' && (
+                                                                <button onClick={() => handleDeleteUserClick(user)} className="p-2 text-muted-foreground hover:text-destructive" title="Xóa"><TrashIcon /></button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )})}
                                         </tbody>
                                     </table>
                                 </div>
@@ -209,7 +196,7 @@ export default function AdminDashboardPage() {
                                     currentPage={currentPages.users}
                                     totalPages={usersTotalPages}
                                     onPageChange={(page) => handlePageChange('users', page)}
-                                    totalItems={users.length}
+                                    totalItems={optimisticUsers.length}
                                     itemsPerPage={ITEMS_PER_PAGE}
                                 />
                             </>
@@ -348,6 +335,13 @@ export default function AdminDashboardPage() {
                 onConfirm={confirmDeleteExam}
                 title="Xác nhận xóa đề thi"
                 message={`Bạn có chắc chắn muốn xóa đề thi "${examToDelete?.title}" không? Hành động này sẽ xóa vĩnh viễn TẤT CẢ các câu hỏi và bài nộp liên quan.`}
+            />
+            <ConfirmationModal
+                isOpen={!!userToDelete}
+                onClose={() => setUserToDelete(null)}
+                onConfirm={confirmDeleteUser}
+                title="Xác nhận xóa người dùng"
+                message={`Bạn có chắc chắn muốn xóa người dùng "${userToDelete?.displayName}" không? Hành động này không thể hoàn tác. Các bài tập và đề thi do người dùng này tạo sẽ được chuyển cho quản trị viên.`}
             />
         </>
     );

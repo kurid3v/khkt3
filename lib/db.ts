@@ -60,6 +60,40 @@ export const db = {
             writeData(usersPath, store.users); // Persist
             return updatedUser;
         },
+        delete: (id: string) => {
+            const userIndex = store.users.findIndex(u => u.id === id);
+            if (userIndex === -1) return false;
+
+            const adminUser = store.users.find(u => u.username === 'adminuser');
+            if (!adminUser) {
+                console.error("Critical error: Admin user not found. Cannot reassign content.");
+                return false;
+            }
+            if (id === adminUser.id) {
+                console.error("Cannot delete the primary admin user.");
+                return false;
+            }
+            
+            // Reassign created content to admin
+            store.problems = store.problems.map(p => p.createdBy === id ? { ...p, createdBy: adminUser.id } : p);
+            store.exams = store.exams.map(e => e.createdBy === id ? { ...e, createdBy: adminUser.id } : e);
+            
+            // Remove user-specific data
+            store.submissions = store.submissions.filter(s => s.submitterId !== id);
+            store.examAttempts = store.examAttempts.filter(a => a.studentId !== id);
+
+            // Remove user
+            store.users.splice(userIndex, 1);
+
+            // Persist all changes
+            writeData(usersPath, store.users);
+            writeData(problemsPath, store.problems);
+            writeData(examsPath, store.exams);
+            writeData(submissionsPath, store.submissions);
+            writeData(examAttemptsPath, store.examAttempts);
+
+            return true;
+        }
     },
     problems: {
         create: (data: Omit<Problem, 'id' | 'createdAt'>) => {

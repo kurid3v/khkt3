@@ -1,10 +1,42 @@
-
 // @ts-nocheck
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import type { Problem, Submission, Exam, ExamAttempt, RubricItem, Question } from '@/types';
+import type { Problem, Submission, Exam, ExamAttempt, RubricItem, Question, User } from '@/types';
+
+// --- Users ---
+export async function updateUser(userId: string, formData: FormData) {
+    try {
+        const displayName = formData.get('displayName') as string;
+        const role = formData.get('role') as User['role'];
+
+        const updateData: Partial<User> = {};
+        if (displayName) updateData.displayName = displayName;
+        if (role) updateData.role = role;
+
+        db.users.update(userId, updateData);
+
+        revalidatePath('/admin');
+        revalidatePath('/profile');
+        revalidatePath(`/admin/users/${userId}/edit`);
+
+    } catch (error) {
+        console.error("Failed to update user:", error);
+        throw new Error("Không thể cập nhật người dùng.");
+    }
+}
+
+export async function deleteUser(userId: string) {
+    try {
+        db.users.delete(userId);
+        revalidatePath('/admin');
+    } catch (error) {
+        console.error("Failed to delete user:", error);
+        throw new Error("Không thể xóa người dùng.");
+    }
+}
+
 
 // --- Problems ---
 export async function createProblem(data: {

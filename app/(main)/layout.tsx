@@ -4,9 +4,10 @@ import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from '@/context/SessionContext';
 import Header from '@/components/Header';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, isLoading } = useSession();
+  const { currentUser, isLoading, impersonatedUser } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,7 +29,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isTakingExam = /^\/exams\/.*\/take\//.test(pathname || '');
 
   return (
-      <div className="min-h-screen bg-background">
+      <div className={`min-h-screen bg-background ${impersonatedUser ? 'pt-12' : ''}`}>
+          {impersonatedUser && <ImpersonationBanner />}
           {!isTakingExam && <Header user={currentUser} />}
           <main>
             {children}
