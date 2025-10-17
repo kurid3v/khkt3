@@ -330,7 +330,7 @@ async function imageToTextOnServer(base64Image: string): Promise<string> {
         },
     };
     const textPart = {
-        text: "Trích xuất tất cả chữ viết tay từ hình ảnh này dưới dạng văn bản thuần túy. Giữ nguyên định dạng và ngắt dòng nhiều nhất có thể."
+        text: "Sử dụng công nghệ OCR tiên tiến nhất, tương tự Google Lens, để đọc và trích xuất TOÀN BỘ văn bản viết tay từ hình ảnh này với độ chính xác tuyệt đối. Văn bản này là một bài văn, vì vậy hãy cố gắng giữ nguyên cấu trúc đoạn văn, ngắt dòng và định dạng gốc. Không bỏ sót bất kỳ từ nào."
     };
 
     const response = await ai.models.generateContent({
