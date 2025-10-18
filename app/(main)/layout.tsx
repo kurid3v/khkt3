@@ -29,7 +29,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isTakingExam = /^\/exams\/.*\/take\//.test(pathname || '');
 
   return (
-      <div className={`min-h-screen bg-background ${impersonatedUser ? 'pt-12' : ''}`}>
+      <div className={`min-h-screen bg-secondary ${impersonatedUser ? 'pt-12' : ''}`}>
           {impersonatedUser && <ImpersonationBanner />}
           {!isTakingExam && <Header user={currentUser} />}
           <main>

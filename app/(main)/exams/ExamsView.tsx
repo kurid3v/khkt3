@@ -49,11 +49,11 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
   const getExamStatus = (startTime: number, endTime: number): { text: string; color: string } => {
     const now = Date.now();
     if (now < startTime) {
-      return { text: 'Sắp diễn ra', color: 'bg-blue-100 text-blue-800 border border-blue-200' };
+      return { text: 'Sắp diễn ra', color: 'bg-blue-100 text-blue-800' };
     } else if (now >= startTime && now <= endTime) {
-      return { text: 'Đang diễn ra', color: 'bg-green-100 text-green-800 border border-green-200' };
+      return { text: 'Đang diễn ra', color: 'bg-green-100 text-green-800' };
     } else {
-      return { text: 'Đã kết thúc', color: 'bg-slate-100 text-slate-800 border border-slate-200' };
+      return { text: 'Đã kết thúc', color: 'bg-slate-100 text-slate-800' };
     }
   };
 
@@ -62,13 +62,13 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
     const status = getExamStatus(exam.startTime, exam.endTime);
     return (
         <div 
-            className="bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 border border-border flex flex-col cursor-pointer relative group"
+            className="bg-card p-6 rounded-xl shadow-card hover:shadow-card-hover border border-border flex flex-col cursor-pointer relative group transition-all duration-200"
             onClick={() => router.push(`/exams/${exam.id}`)}
         >
             {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
               <button
                 onClick={(e) => handleDeleteClick(e, exam)}
-                className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100"
+                className="absolute top-3 right-3 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 aria-label={`Xóa đề thi ${exam.title}`}
                 title="Xóa đề thi"
               >
@@ -77,27 +77,27 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
             )}
             <div className="flex-grow">
                 <div className="flex justify-between items-start gap-4">
-                    <h3 className="text-lg font-bold text-foreground flex-1">{exam.title}</h3>
-                     <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${status.color}`}>
+                    <h3 className="font-bold text-foreground flex-1 pr-8">{exam.title}</h3>
+                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-md whitespace-nowrap ${status.color}`}>
                         {status.text}
                     </span>
                 </div>
-                <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{exam.description}</p>
+                <p className="text-muted-foreground mt-2 text-sm h-10 overflow-hidden text-ellipsis">{exam.description || 'Không có mô tả.'}</p>
             </div>
-            <div className="mt-4 border-t border-border pt-4 flex justify-between items-center text-sm text-muted-foreground">
+            <div className="mt-4 border-t border-border/80 pt-4 flex justify-between items-center text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5" title={`${problemCount} câu hỏi`}>
                         <ClipboardListIcon className="h-4 w-4" />
-                        <span className="font-semibold">{problemCount} câu hỏi</span>
+                        <span className="font-semibold">{problemCount}</span>
                     </div>
-                    <div className="flex items-center gap-1.5" title="Thời gian bắt đầu">
+                    <div className="flex items-center gap-1.5" title={`Bắt đầu lúc: ${new Date(exam.startTime).toLocaleString('vi-VN')}`}>
                         <ClockIcon />
-                        <span>{new Date(exam.startTime).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span>{new Date(exam.startTime).toLocaleDateString('vi-VN')}</span>
                     </div>
                 </div>
                 {exam.password && (
                     <div className="flex items-center gap-1.5" title="Có mật khẩu">
-                        <LockClosedIcon />
+                        <LockClosedIcon className="h-4 w-4"/>
                     </div>
                 )}
             </div>
@@ -115,26 +115,36 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
               {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                   <button
                       onClick={() => router.push('/exams/create')}
-                      className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                      className="btn-primary px-5 py-2.5"
                   >
                       + Tạo đề thi mới
                   </button>
               )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          {optimisticExams.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {optimisticExams.map(exam => (
                   <ExamCard key={exam.id} exam={exam} />
               ))}
-          </div>
-          
-          {optimisticExams.length === 0 && (
-               <div className="text-center py-16 bg-card rounded-lg border border-dashed">
-                     <p className="text-muted-foreground">
-                        Chưa có đề thi nào được tạo.
+            </div>
+          ) : (
+               <div className="text-center py-20 bg-card rounded-xl border-2 border-dashed">
+                     <h3 className="text-xl font-semibold text-foreground">Không có đề thi nào</h3>
+                     <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                        {currentUser.role === 'student' 
+                          ? 'Hiện tại chưa có kỳ thi nào được tổ chức.'
+                          : 'Bạn chưa tạo đề thi nào. Nhấn nút "Tạo đề thi mới" để bắt đầu.'
+                        }
                     </p>
                     {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                      <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo đề thi mới" để bắt đầu.</p>
+                      <button
+                        onClick={() => router.push('/exams/create')}
+                        className="mt-6 btn-primary px-5 py-2.5"
+                      >
+                        Tạo đề thi đầu tiên
+                      </button>
                     )}
               </div>
           )}

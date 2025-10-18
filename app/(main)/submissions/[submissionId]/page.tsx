@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -426,10 +427,10 @@ export default function SubmissionResultPage({ params }: { params: { submissionI
                 </p>
             </header>
 
-            {submission.essay ? (
+            {problem.type === 'essay' ? (
                 <EssayResult problem={problem} submission={submission} currentUser={currentUser} onUpdateSubmission={updateSubmission} />
             ) : (
-                <div className="space-y-8">
+                 <div className="space-y-8">
                     <FeedbackDisplay 
                         feedback={submission.feedback} 
                         problem={problem}

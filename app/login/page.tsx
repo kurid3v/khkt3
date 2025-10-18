@@ -30,18 +30,22 @@ export default function LoginPage() {
     }
   };
 
-  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2";
+  const inputClasses = "block w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/50";
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-secondary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <form onSubmit={handleLogin} className="bg-card shadow-lg rounded-xl border border-border p-8 space-y-6">
+        <div className="text-center mb-8">
+            <h1 className="text-4xl font-extrabold text-foreground">AVinci</h1>
+            <p className="text-muted-foreground mt-2">Nền tảng học tập Văn học với AI</p>
+        </div>
+        <form onSubmit={handleLogin} className="bg-card shadow-card rounded-xl border border-border p-8 space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground">Chào mừng trở lại</h1>
-            <p className="text-muted-foreground mt-2">Vui lòng đăng nhập để tiếp tục</p>
+            <h2 className="text-2xl font-bold text-foreground">Chào mừng trở lại</h2>
+            <p className="text-muted-foreground mt-1">Vui lòng đăng nhập để tiếp tục</p>
           </div>
 
-          {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
+          {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center text-sm font-medium">{error}</p>}
           
           <div>
             <label htmlFor="username-input" className="block text-foreground text-sm font-semibold mb-2">
@@ -87,7 +91,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={!username || !password}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary font-bold py-3 px-4 disabled:cursor-not-allowed"
             >
               Đăng nhập
             </button>
@@ -101,9 +105,6 @@ export default function LoginPage() {
             </Link>
           </div>
         </form>
-         <footer className="text-center mt-8 text-muted-foreground text-sm">
-          <p>Cung cấp bởi công nghệ AI tiên tiến.</p>
-        </footer>
       </div>
     </div>
   );

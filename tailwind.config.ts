@@ -50,10 +50,17 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        '2xl': `calc(var(--radius) + 4px)`,
+        xl: `var(--radius)`,
+        lg: `calc(var(--radius) - 2px)`,
+        md: `calc(var(--radius) - 4px)`,
+        sm: `calc(var(--radius) - 6px)`,
       },
+      boxShadow: {
+        'input': '0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring))',
+        'card': '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
+        'card-hover': '0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)',
+      }
     },
   },
   plugins: [

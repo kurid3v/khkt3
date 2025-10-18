@@ -63,7 +63,7 @@ export default function DashboardPage() {
             return {
                 submitted: true,
                 text: `Đã nộp (${userSubmissions.length} lần)`,
-                scoreText: `Điểm cao nhất: ${highestScore.toFixed(2)}`
+                scoreText: `Điểm cao nhất: ${highestScore.toFixed(2).replace(/\.00$/, '')}`
             };
         }
         return { submitted: false, text: 'Chưa nộp' };
@@ -80,35 +80,39 @@ export default function DashboardPage() {
         return (
             <div
                 onClick={() => router.push(`/problems/${problem.id}`)}
-                className="block bg-card p-6 rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 border border-border transition-all duration-200 cursor-pointer relative group"
+                className="block bg-card p-6 rounded-xl shadow-card hover:shadow-card-hover border border-border transition-all duration-200 cursor-pointer relative group flex flex-col"
             >
                 {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                     <button
                         onClick={(e) => handleDeleteClick(e, problem)}
-                        className="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100"
+                        className="absolute top-3 right-3 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         aria-label={`Xóa bài tập ${problem.title}`}
                         title="Xóa bài tập"
                     >
                         <TrashIcon />
                     </button>
                 )}
-                <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                        <h3 className="text-lg font-bold text-foreground">{problem.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Giao bởi: {teacher?.displayName || 'Không rõ'}</p>
-                    </div>
-                    <div className={`flex-shrink-0 p-2 rounded-full ${isEssay ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                       {isEssay ? <BookOpenIcon className="w-5 h-5" /> : <ClipboardListIcon className="w-5 h-5" />}
+                <div className="flex-grow">
+                    <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                            <h3 className="font-bold text-foreground pr-8">{problem.title}</h3>
+                            <p className="text-sm text-muted-foreground mt-1">Giao bởi: {teacher?.displayName || 'Không rõ'}</p>
+                        </div>
+                        <div className={`flex-shrink-0 p-2.5 rounded-full ${isEssay ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                           {isEssay ? <BookOpenIcon className="w-5 h-5" /> : <ClipboardListIcon className="w-5 h-5" />}
+                        </div>
                     </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-border text-sm">
+                <div className="mt-4 pt-4 border-t border-border/80 text-sm">
                     {currentUser.role === 'student' ? (
                         (() => {
                             const status = getSubmissionStatusForStudent(problem.id);
                             return (
-                                <div className={`flex justify-between items-center font-semibold ${status.submitted ? 'text-green-600' : 'text-yellow-600'}`}>
-                                    <span>{status.text}</span>
-                                    {status.submitted && <span className="text-muted-foreground font-normal">{status.scoreText}</span>}
+                                <div className="flex justify-between items-center">
+                                    <span className={`font-semibold px-2.5 py-1 rounded-md text-xs ${status.submitted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                      {status.text}
+                                    </span>
+                                    {status.submitted && <span className="text-muted-foreground font-semibold">{status.scoreText}</span>}
                                 </div>
                             );
                         })()
@@ -132,7 +136,7 @@ export default function DashboardPage() {
                     {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                         <button
                             onClick={() => router.push('/problems/create')}
-                            className="px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                            className="btn-primary px-5 py-2.5"
                         >
                             + Tạo bài tập mới
                         </button>
@@ -146,14 +150,20 @@ export default function DashboardPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-16 bg-card rounded-lg border border-dashed">
-                         <p className="text-muted-foreground">
+                    <div className="text-center py-20 bg-card rounded-xl border-2 border-dashed">
+                         <h3 className="text-xl font-semibold text-foreground">Không có bài tập nào</h3>
+                         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
                             {currentUser.role === 'student'
-                                ? 'Giáo viên của bạn chưa giao bài tập nào.'
-                                : 'Chưa có bài tập nào được tạo.'}
+                                ? 'Giáo viên của bạn chưa giao bài tập nào. Hãy quay lại sau nhé!'
+                                : 'Bạn chưa tạo bài tập nào. Nhấn nút "Tạo bài tập mới" để bắt đầu.'}
                         </p>
                         {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
-                          <p className="text-muted-foreground text-sm mt-1">Nhấn "Tạo bài tập mới" để bắt đầu.</p>
+                          <button
+                            onClick={() => router.push('/problems/create')}
+                            className="mt-6 btn-primary px-5 py-2.5"
+                          >
+                            Tạo bài tập đầu tiên
+                          </button>
                         )}
                     </div>
                 )}

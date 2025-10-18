@@ -7,39 +7,39 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* Light Gray */
-    --foreground: 222.2 84% 4.9%; /* Almost Black */
+    --background: 220 20% 98%; /* Softer off-white */
+    --foreground: 224 10% 10%; /* Dark slate gray */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 10% 10%;
  
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 224 10% 10%;
  
-    --primary: 221.2 83.2% 53.3%; /* Blue */
-    --primary-foreground: 210 40% 98%;
+    --primary: 221.2 83.2% 53.3%; /* Keep the nice blue */
+    --primary-foreground: 0 0% 100%;
  
-    --secondary: 210 40% 96.1%; /* Light Grayish Blue */
+    --secondary: 220 14.3% 95.9%; /* Lighter gray */
     --secondary-foreground: 222.2 47.4% 11.2%;
  
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 9% 46%; /* Softer muted text */
  
-    --accent: 210 40% 96.1%;
+    --accent: 220 14.3% 95.9%;
     --accent-foreground: 222.2 47.4% 11.2%;
  
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 221.2 83.2% 53.3%;
  
-    --radius: 0.75rem;
+    --radius: 0.75rem; /* Will use this for consistent border radius */
   }
  
   .dark {
-    /* Define dark mode colors if needed in the future */
+    /* Future dark mode variables */
   }
 }
 
@@ -47,10 +47,43 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply scroll-smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply font-heading text-foreground;
   }
+  h1 { @apply text-3xl font-bold tracking-tight; }
+  h2 { @apply text-2xl font-bold tracking-tight; }
+  h3 { @apply text-xl font-bold; }
+  h4 { @apply text-lg font-semibold; }
+
+  .container {
+    @apply mx-auto px-4;
+  }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    }
+    .btn-primary {
+        @apply btn bg-primary text-primary-foreground shadow-sm hover:bg-primary/90;
+    }
+    .btn-secondary {
+        @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80;
+    }
+    .btn-destructive {
+        @apply btn bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90;
+    }
+    .btn-outline {
+        @apply btn border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground;
+    }
+    .btn-ghost {
+        @apply btn hover:bg-accent hover:text-accent-foreground;
+    }
 }
