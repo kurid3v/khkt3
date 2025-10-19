@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
   const roleText = roleTextMap[user.role] || 'Không xác định';
   
   const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
-    const isActive = pathname === href;
+    const isActive = pathname.startsWith(href);
     return (
         <Link href={href} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
             isActive 
@@ -64,6 +65,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
             <nav className="hidden md:flex items-center gap-2">
                 <NavLink href="/dashboard">Bài tập</NavLink>
                 <NavLink href="/exams">Đề thi</NavLink>
+                <NavLink href="/classrooms">Lớp học</NavLink>
                 <NavLink href="/submissions/all">Bài nộp</NavLink>
                 {user.role === 'admin' && (
                     <NavLink href="/admin">Quản trị</NavLink>

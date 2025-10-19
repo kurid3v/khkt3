@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import React, { useState, useTransition, useOptimistic } from 'react';
+import React, { useState, useTransition, useOptimistic, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import type { Problem } from '@/types';
@@ -11,9 +10,10 @@ import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { deleteProblem } from '@/app/actions';
+import UsersIcon from '@/components/icons/UsersIcon';
 
 export default function DashboardPage() {
-    const { problems, submissions, users, currentUser, isLoading } = useDataContext();
+    const { problems, submissions, users, currentUser, classrooms, isLoading } = useDataContext();
     const router = useRouter();
 
     const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
@@ -37,7 +37,22 @@ export default function DashboardPage() {
         return <p className="p-8">Vui lòng đăng nhập...</p>;
     }
 
-    const standaloneProblems = optimisticProblems
+    const filteredProblems = useMemo(() => {
+        if (currentUser.role === 'student') {
+            const studentClassroomIds = classrooms
+                .filter(c => c.studentIds.includes(currentUser.id))
+                .map(c => c.id);
+            
+            return optimisticProblems.filter(p => 
+                !p.classroomIds || p.classroomIds.length === 0 || p.classroomIds.some(cid => studentClassroomIds.includes(cid))
+            );
+        }
+        // Teachers and admins see all problems
+        return optimisticProblems;
+    }, [optimisticProblems, currentUser, classrooms]);
+
+
+    const standaloneProblems = filteredProblems
         .filter(p => !p.examId)
         .sort((a, b) => b.createdAt - a.createdAt);
 
@@ -76,6 +91,7 @@ export default function DashboardPage() {
     const ProblemCard: React.FC<{ problem: Problem }> = ({ problem }) => {
         const teacher = users.find(u => u.id === problem.createdBy);
         const isEssay = problem.type === 'essay';
+        const problemClassrooms = classrooms.filter(c => problem.classroomIds?.includes(c.id));
 
         return (
             <div
@@ -97,6 +113,14 @@ export default function DashboardPage() {
                         <div className="flex-1">
                             <h3 className="font-bold text-foreground pr-8">{problem.title}</h3>
                             <p className="text-sm text-muted-foreground mt-1">Giao bởi: {teacher?.displayName || 'Không rõ'}</p>
+                             {problemClassrooms.length > 0 && (
+                                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground" title={problemClassrooms.map(c => c.name).join(', ')}>
+                                    <UsersIcon className="h-4 w-4" />
+                                    <span className="truncate">
+                                        {problemClassrooms.length > 1 ? `${problemClassrooms.length} lớp` : problemClassrooms[0].name}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className={`flex-shrink-0 p-2.5 rounded-full ${isEssay ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
                            {isEssay ? <BookOpenIcon className="w-5 h-5" /> : <ClipboardListIcon className="w-5 h-5" />}

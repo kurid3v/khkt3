@@ -1,10 +1,12 @@
 
-
 'use client';
 
-import React, { useState, useTransition, Suspense } from 'react';
+import React, { useState, useTransition, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+// FIX: Import the `Link` component from 'next/link' to resolve the 'Cannot find name Link' error.
+import Link from 'next/link';
 import { useSession } from '@/context/SessionContext';
+import { useDataContext } from '@/context/DataContext';
 import { createProblem } from '@/app/actions';
 import type { RubricItem, Question, Option } from '@/types';
 import { parseRubric } from '@/services/geminiService';
@@ -17,12 +19,14 @@ function CreateProblemForm() {
   const searchParams = useSearchParams();
   const examId = searchParams?.get('examId');
   const { currentUser } = useSession();
+  const { classrooms, refetchData } = useDataContext();
 
   // Common state
   const [problemType, setProblemType] = useState<'essay' | 'reading_comprehension'>('essay');
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
 
   // Essay state
   const [prompt, setPrompt] = useState('');
@@ -36,6 +40,17 @@ function CreateProblemForm() {
   // Reading Comprehension state
   const [passage, setPassage] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+
+  const teacherClassrooms = useMemo(() => 
+    currentUser ? classrooms.filter(c => c.teacherId === currentUser.id) : [],
+    [classrooms, currentUser]
+  );
+
+  const handleClassroomToggle = (classId: string) => {
+    setSelectedClassroomIds(prev => 
+      prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
+    );
+  };
 
   // --- Essay Rubric Methods ---
   const addRubricItem = () => setRubricItems([...rubricItems, { id: crypto.randomUUID(), criterion: '', maxScore: 0 }]);
@@ -130,7 +145,7 @@ function CreateProblemForm() {
         setError('Đề bài không được để trống.');
         return;
       }
-      problemData = { type: 'essay', title, prompt, rawRubric, rubricItems, customMaxScore: Number(customMaxScore), isRubricHidden, createdBy: currentUser.id, examId: examId || undefined };
+      problemData = { type: 'essay', title, prompt, rawRubric, rubricItems, customMaxScore: Number(customMaxScore), isRubricHidden, createdBy: currentUser.id, examId: examId || undefined, classroomIds: selectedClassroomIds };
     } else { // reading_comprehension
       if (!passage.trim()) {
         setError('Đoạn văn không được để trống.');
@@ -140,12 +155,13 @@ function CreateProblemForm() {
         setError('Phải có ít nhất một câu hỏi, mỗi câu hỏi trắc nghiệm phải có ít nhất hai lựa chọn và không có trường nào được để trống.');
         return;
       }
-      problemData = { type: 'reading_comprehension', title, passage, questions, createdBy: currentUser.id, examId: examId || undefined };
+      problemData = { type: 'reading_comprehension', title, passage, questions, createdBy: currentUser.id, examId: examId || undefined, classroomIds: selectedClassroomIds };
     }
 
     startTransition(async () => {
         try {
             await createProblem(problemData);
+            await refetchData();
             const destination = examId ? `/exams/${examId}` : '/dashboard';
             router.push(destination);
         } catch (err) {
@@ -194,6 +210,30 @@ function CreateProblemForm() {
     </button>
   );
 
+  const ClassroomSelector = () => (
+    <div>
+        <label className={labelClass}>Giao cho lớp học (tùy chọn)</label>
+        <p className="text-sm text-muted-foreground mt-1 mb-2">Nếu không chọn lớp nào, bài tập sẽ được hiển thị cho tất cả học sinh.</p>
+        {teacherClassrooms.length > 0 ? (
+            <div className="mt-2 space-y-2 max-h-40 overflow-y-auto p-3 bg-secondary/30 rounded-lg">
+                {teacherClassrooms.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted cursor-pointer has-[:checked]:bg-primary/10">
+                        <input
+                            type="checkbox"
+                            checked={selectedClassroomIds.includes(c.id)}
+                            onChange={() => handleClassroomToggle(c.id)}
+                            className="form-checkbox h-4 w-4 text-primary focus:ring-primary"
+                        />
+                        <span className="font-medium text-foreground">{c.name}</span>
+                    </label>
+                ))}
+            </div>
+        ) : (
+            <p className="text-sm text-muted-foreground p-3 bg-secondary/30 rounded-lg">Bạn chưa tạo lớp học nào. <Link href="/classrooms" className="text-primary font-semibold underline">Tạo lớp học mới</Link>.</p>
+        )}
+    </div>
+  );
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-3xl font-bold text-foreground mb-8">
@@ -227,6 +267,7 @@ function CreateProblemForm() {
               <label htmlFor="problem-prompt" className={labelClass}>Đề bài / Yêu cầu chi tiết</label>
               <textarea id="problem-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Nhập nội dung đề bài văn..." className={`${textareaClass} h-40`} />
             </div>
+            {!examId && <ClassroomSelector />}
             <div>
                 <label htmlFor="max-score-input" className={labelClass}>Thang điểm</label>
                 <input id="max-score-input" type="number" value={customMaxScore} onChange={(e) => setCustomMaxScore(e.target.value)} min="1" step="any" className={`${inputClass} w-40`} />
@@ -277,6 +318,7 @@ function CreateProblemForm() {
               <label htmlFor="passage-input" className={labelClass}>Đoạn văn đọc hiểu</label>
               <textarea id="passage-input" value={passage} onChange={(e) => setPassage(e.target.value)} placeholder="Dán đoạn văn vào đây..." className={`${textareaClass} h-60`} />
             </div>
+            {!examId && <ClassroomSelector />}
             <div className="pt-6 border-t border-border space-y-4">
               <div className="flex justify-between items-center">
                 <label className={labelClass}>Câu hỏi</label>

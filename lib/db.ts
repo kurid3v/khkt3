@@ -1,4 +1,5 @@
-import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
+
+import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
@@ -9,6 +10,7 @@ import problemsData from '@/data/problems.json';
 import submissionsData from '@/data/submissions.json';
 import examsData from '@/data/exams.json';
 import examAttemptsData from '@/data/examAttempts.json';
+import classroomsData from '@/data/classrooms.json';
 
 // Define file paths for writing data
 const dataDir = path.join(process.cwd(), 'data');
@@ -17,6 +19,7 @@ const problemsPath = path.join(dataDir, 'problems.json');
 const submissionsPath = path.join(dataDir, 'submissions.json');
 const examsPath = path.join(dataDir, 'exams.json');
 const examAttemptsPath = path.join(dataDir, 'examAttempts.json');
+const classroomsPath = path.join(dataDir, 'classrooms.json');
 
 
 // Helper to write JSON file for persistence
@@ -36,6 +39,7 @@ const store = {
     submissions: submissionsData as Submission[],
     exams: examsData as Exam[],
     examAttempts: examAttemptsData as ExamAttempt[],
+    classrooms: classroomsData as Classroom[],
 };
 
 // Data access layer that now persists changes to JSON files.
@@ -81,6 +85,10 @@ export const db = {
             // Remove user-specific data
             store.submissions = store.submissions.filter(s => s.submitterId !== id);
             store.examAttempts = store.examAttempts.filter(a => a.studentId !== id);
+            store.classrooms = store.classrooms.map(c => ({
+                ...c,
+                studentIds: c.studentIds.filter(studentId => studentId !== id)
+            })).filter(c => c.teacherId !== id); // Delete classes created by this user
 
             // Remove user
             store.users.splice(userIndex, 1);
@@ -91,6 +99,7 @@ export const db = {
             writeData(examsPath, store.exams);
             writeData(submissionsPath, store.submissions);
             writeData(examAttemptsPath, store.examAttempts);
+            writeData(classroomsPath, store.classrooms);
 
             return true;
         }
@@ -144,7 +153,7 @@ export const db = {
          create: (data: Omit<Exam, 'id' | 'createdAt'>) => {
             const newExam: Exam = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
             store.exams.push(newExam);
-writeData(examsPath, store.exams); // Persist
+            writeData(examsPath, store.exams); // Persist
             return newExam;
         },
         delete: (id: string) => {
@@ -199,5 +208,52 @@ writeData(examsPath, store.exams); // Persist
             writeData(examAttemptsPath, store.examAttempts); // Persist
             return updatedAttempt;
         },
+    },
+    classrooms: {
+        find: (predicate: (classroom: Classroom) => boolean) => store.classrooms.find(predicate),
+        create: (data: Omit<Classroom, 'id' | 'studentIds' | 'joinCode'>) => {
+            const generateJoinCode = () => {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                let code = '';
+                for (let i = 0; i < 6; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return code;
+            };
+            const newClassroom: Classroom = { 
+                ...data, 
+                id: crypto.randomUUID(), 
+                studentIds: [],
+                joinCode: generateJoinCode()
+            };
+            store.classrooms.push(newClassroom);
+            writeData(classroomsPath, store.classrooms);
+            return newClassroom;
+        },
+        update: (id: string, data: Partial<Classroom>) => {
+            const classIndex = store.classrooms.findIndex(c => c.id === id);
+            if (classIndex === -1) return null;
+            const updatedClassroom = { ...store.classrooms[classIndex], ...data };
+            store.classrooms[classIndex] = updatedClassroom;
+            writeData(classroomsPath, store.classrooms);
+            return updatedClassroom;
+        },
+        delete: (id: string) => {
+            const initialLength = store.classrooms.length;
+            store.classrooms = store.classrooms.filter(c => c.id !== id);
+            // Also remove this classroom from any assignments
+            store.problems = store.problems.map(p => ({
+                ...p,
+                classroomIds: p.classroomIds?.filter(cid => cid !== id)
+            }));
+            store.exams = store.exams.map(e => ({
+                ...e,
+                classroomIds: e.classroomIds?.filter(cid => cid !== id)
+            }));
+            writeData(classroomsPath, store.classrooms);
+            writeData(problemsPath, store.problems);
+            writeData(examsPath, store.exams);
+            return store.classrooms.length < initialLength;
+        }
     }
 };

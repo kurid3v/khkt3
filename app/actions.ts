@@ -1,9 +1,10 @@
+
 // @ts-nocheck
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import type { Problem, Submission, Exam, ExamAttempt, RubricItem, Question, User } from '@/types';
+import type { Problem, Submission, Exam, ExamAttempt, RubricItem, Question, User, Classroom } from '@/types';
 
 // --- Users ---
 export async function updateUser(userId: string, formData: FormData) {
@@ -73,9 +74,10 @@ export async function createProblem(data: {
   questions?: Question[];
   // common fields
   examId?: string;
+  classroomIds?: string[];
 }) {
   try {
-    const existingProblem = db.all.problems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase());
+    const existingProblem = db.all.problems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase() && !p.examId);
     if (existingProblem) {
       throw new Error("Tên bài tập đã tồn tại. Vui lòng chọn một tên khác.");
     }
@@ -86,6 +88,7 @@ export async function createProblem(data: {
         createdBy: data.createdBy,
         type: data.type,
         examId: data.examId,
+        classroomIds: data.classroomIds,
         ...(data.type === 'essay' ? {
             prompt: data.prompt,
             rawRubric: data.rawRubric,
@@ -177,4 +180,51 @@ export async function addSubmission(submissionData: Omit<Submission, 'id' | 'sub
         console.error("Failed to add submission:", error);
         throw new Error("Không thể nộp bài.");
     }
+}
+
+// --- Classrooms ---
+export async function createClassroom(name: string, teacherId: string) {
+    if (!name.trim()) throw new Error("Tên lớp không được để trống.");
+    db.classrooms.create({ name, teacherId });
+    revalidatePath('/classrooms');
+}
+
+export async function deleteClassroom(classroomId: string) {
+    db.classrooms.delete(classroomId);
+    revalidatePath('/classrooms');
+}
+
+export async function joinClassroom(joinCode: string, studentId: string) {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) throw new Error("Mã tham gia không hợp lệ.");
+
+    const classroom = db.classrooms.find(c => c.joinCode === code);
+    if (!classroom) throw new Error("Không tìm thấy lớp học với mã này.");
+
+    if (classroom.studentIds.includes(studentId)) {
+        throw new Error("Bạn đã ở trong lớp học này.");
+    }
+
+    const updatedStudentIds = [...classroom.studentIds, studentId];
+    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    revalidatePath('/classrooms');
+}
+
+export async function leaveClassroom(classroomId: string, studentId: string) {
+    const classroom = db.classrooms.find(c => c.id === classroomId);
+    if (!classroom) throw new Error("Không tìm thấy lớp học.");
+
+    const updatedStudentIds = classroom.studentIds.filter(id => id !== studentId);
+    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    revalidatePath('/classrooms');
+}
+
+export async function removeStudentFromClass(classroomId: string, studentId: string) {
+    const classroom = db.classrooms.find(c => c.id === classroomId);
+    if (!classroom) throw new Error("Không tìm thấy lớp học.");
+
+    const updatedStudentIds = classroom.studentIds.filter(id => id !== studentId);
+    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    revalidatePath(`/classrooms`);
+    revalidatePath(`/classrooms/${classroomId}`);
 }

@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useDataContext } from '@/context/DataContext';
 import ExamsView from './ExamsView';
 
 export default function ExamsPage() {
-    const { currentUser, exams, problems, isLoading } = useDataContext();
+    const { currentUser, exams, problems, classrooms, isLoading } = useDataContext();
 
     if (isLoading) {
       return (
@@ -25,7 +26,8 @@ export default function ExamsPage() {
         <ExamsView 
             initialExams={exams} 
             problems={problems} 
-            currentUser={currentUser} 
+            currentUser={currentUser}
+            classrooms={classrooms}
         />
     );
 }

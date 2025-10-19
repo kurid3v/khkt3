@@ -1,8 +1,9 @@
+
 'use client';
-import React, { useState, useTransition, useOptimistic } from 'react';
+import React, { useState, useTransition, useOptimistic, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { removeExam } from '@/app/actions';
-import type { Exam, Problem, User } from '@/types';
+import type { Exam, Problem, User, Classroom } from '@/types';
 import ClockIcon from '@/components/icons/ClockIcon';
 import LockClosedIcon from '@/components/icons/LockClosedIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
@@ -13,9 +14,10 @@ interface ExamsViewProps {
     initialExams: Exam[];
     problems: Problem[];
     currentUser: Omit<User, 'password'>;
+    classrooms: Classroom[];
 }
 
-export default function ExamsView({ initialExams, problems, currentUser }: ExamsViewProps) {
+export default function ExamsView({ initialExams, problems, currentUser, classrooms }: ExamsViewProps) {
   const router = useRouter();
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
   
@@ -26,6 +28,19 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
   );
   
   const [isPending, startTransition] = useTransition();
+
+  const filteredExams = useMemo(() => {
+    if (currentUser.role === 'student') {
+        const studentClassroomIds = classrooms
+            .filter(c => c.studentIds.includes(currentUser.id))
+            .map(c => c.id);
+        
+        return optimisticExams.filter(e => 
+            !e.classroomIds || e.classroomIds.length === 0 || e.classroomIds.some(cid => studentClassroomIds.includes(cid))
+        );
+    }
+    return optimisticExams;
+  }, [optimisticExams, currentUser, classrooms]);
 
   const handleDeleteClick = (e: React.MouseEvent, exam: Exam) => {
     e.stopPropagation();
@@ -123,9 +138,9 @@ export default function ExamsView({ initialExams, problems, currentUser }: Exams
           </div>
 
           
-          {optimisticExams.length > 0 ? (
+          {filteredExams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {optimisticExams.map(exam => (
+              {filteredExams.map(exam => (
                   <ExamCard key={exam.id} exam={exam} />
               ))}
             </div>

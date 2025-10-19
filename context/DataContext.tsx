@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
-import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
+import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 import { useSession } from './SessionContext';
 
 type UserSession = Omit<User, 'password'>;
@@ -13,16 +14,19 @@ interface DataContextType {
     submissions: Submission[];
     exams: Exam[];
     examAttempts: ExamAttempt[];
+    classrooms: Classroom[];
     isLoading: boolean;
     updateUserRole: (userId: string, role: 'student' | 'teacher' | 'admin') => Promise<void>;
     updateProblem: (updatedProblem: Problem) => Promise<void>;
-    addExam: (title: string, description: string, startTime: number, endTime: number, password?: string) => Promise<Exam | null>;
+    addExam: (title: string, description: string, startTime: number, endTime: number, password?: string, classroomIds?: string[]) => Promise<Exam | null>;
     addSubmissionAndSyncState: (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => Promise<Submission | null>;
     updateSubmission: (submissionId: string, updatedData: Partial<Submission>) => Promise<void>;
     startExamAttempt: (examId: string) => Promise<ExamAttempt | null>;
     finishExamAttempt: (attempt: ExamAttempt, newSubmissions: Submission[]) => Promise<void>;
     recordFullscreenExit: (attemptId: string) => Promise<void>;
     recordVisibilityChange: (attemptId: string) => Promise<void>;
+    // Classroom actions
+    refetchData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -35,6 +39,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [exams, setExams] = useState<Exam[]>([]);
     const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>([]);
+    const [classrooms, setClassrooms] = useState<Classroom[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
@@ -48,6 +53,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setSubmissions(data.submissions);
             setExams(data.exams);
             setExamAttempts(data.examAttempts);
+            setClassrooms(data.classrooms);
         } catch (error) {
             console.error("Error fetching initial data:", error);
         } finally {
@@ -121,13 +127,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const addExam = async (title: string, description: string, startTime: number, endTime: number, password?: string): Promise<Exam | null> => {
+    const addExam = async (title: string, description: string, startTime: number, endTime: number, password?: string, classroomIds?: string[]): Promise<Exam | null> => {
         if (!currentUser) return null;
         try {
             const response = await fetch('/api/exams', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description, startTime, endTime, password, createdBy: currentUser.id }),
+                body: JSON.stringify({ title, description, startTime, endTime, password, createdBy: currentUser.id, classroomIds }),
             });
             if (!response.ok) throw new Error('Failed to create exam');
             const newExam = await response.json();
@@ -225,6 +231,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         submissions,
         exams,
         examAttempts,
+        classrooms,
         isLoading,
         updateUserRole,
         updateProblem,
@@ -235,6 +242,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         finishExamAttempt,
         recordFullscreenExit,
         recordVisibilityChange,
+        refetchData: fetchData,
     };
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

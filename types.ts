@@ -8,6 +8,14 @@ export interface User {
   avatar?: string; // Base64 encoded image
 }
 
+export interface Classroom {
+  id: string;
+  name: string;
+  teacherId: string;
+  studentIds: string[];
+  joinCode: string;
+}
+
 export interface Option {
   id: string;
   text: string;
@@ -34,6 +42,7 @@ export interface Problem {
   createdAt: number;
   examId?: string; // ID of the exam this problem belongs to
   customMaxScore?: number;
+  classroomIds?: string[]; // IDs of classrooms this problem is assigned to
 
   type: 'essay' | 'reading_comprehension';
 
@@ -78,6 +87,7 @@ export interface Exam {
   password?: string; // Optional password
   createdBy: string; // userId of teacher
   createdAt: number;
+  classroomIds?: string[]; // IDs of classrooms this exam is assigned to
 }
 
 export interface ExamAttempt {

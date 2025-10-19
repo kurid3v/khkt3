@@ -1,5 +1,7 @@
+
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataContext } from '@/context/DataContext';
 import CalendarPicker from '@/components/CalendarPicker';
@@ -7,12 +9,13 @@ import CalendarIcon from '@/components/icons/CalendarIcon';
 
 export default function CreateExamPage() {
   const router = useRouter();
-  const { addExam } = useDataContext();
+  const { addExam, classrooms, currentUser, refetchData } = useDataContext();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
 
   const now = new Date();
   const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
@@ -22,7 +25,18 @@ export default function CreateExamPage() {
   
   const [isPickerOpenFor, setIsPickerOpenFor] = useState<'start' | 'end' | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const teacherClassrooms = useMemo(() => 
+    currentUser ? classrooms.filter(c => c.teacherId === currentUser.id) : [],
+    [classrooms, currentUser]
+  );
+
+  const handleClassroomToggle = (classId: string) => {
+    setSelectedClassroomIds(prev => 
+      prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const startTimeMs = startTime.getTime();
     const endTimeMs = endTime.getTime();
@@ -37,13 +51,43 @@ export default function CreateExamPage() {
     }
     
     setError('');
-    addExam(title, description, startTimeMs, endTimeMs, password.trim() || undefined);
-    router.push('/exams');
+    const newExam = await addExam(title, description, startTimeMs, endTimeMs, password.trim() || undefined, selectedClassroomIds);
+    if (newExam) {
+      await refetchData();
+      router.push(`/exams/${newExam.id}`);
+    } else {
+        setError("Không thể tạo đề thi. Vui lòng thử lại.");
+    }
   };
   
   const inputClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200";
   const textareaClass = `${inputClass} resize-y`;
   const dateButtonClass = "mt-2 w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-800 text-left flex items-center gap-2 hover:border-blue-500";
+  const labelClass = "text-lg font-semibold text-slate-800";
+
+  const ClassroomSelector = () => (
+    <div>
+        <label className={labelClass}>Giao cho lớp học (tùy chọn)</label>
+        <p className="text-sm text-slate-500 mt-1 mb-2">Nếu không chọn lớp nào, đề thi sẽ được hiển thị cho tất cả học sinh.</p>
+        {teacherClassrooms.length > 0 ? (
+            <div className="mt-2 space-y-2 max-h-40 overflow-y-auto p-3 bg-slate-50 rounded-lg border">
+                {teacherClassrooms.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 cursor-pointer has-[:checked]:bg-blue-100">
+                        <input
+                            type="checkbox"
+                            checked={selectedClassroomIds.includes(c.id)}
+                            onChange={() => handleClassroomToggle(c.id)}
+                            className="form-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="font-medium text-slate-700">{c.name}</span>
+                    </label>
+                ))}
+            </div>
+        ) : (
+            <p className="text-sm text-slate-500 p-3 bg-slate-100 rounded-lg">Bạn chưa tạo lớp học nào. <Link href="/classrooms" className="text-blue-600 font-semibold underline">Tạo lớp học mới</Link>.</p>
+        )}
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -51,7 +95,7 @@ export default function CreateExamPage() {
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg space-y-6">
         {error && <p className="text-red-500 bg-red-100 p-3 rounded-md">{error}</p>}
         <div>
-          <label htmlFor="exam-title" className="text-lg font-semibold text-slate-800">
+          <label htmlFor="exam-title" className={labelClass}>
             Tên đề thi
           </label>
           <input
@@ -65,7 +109,7 @@ export default function CreateExamPage() {
           />
         </div>
         <div>
-          <label htmlFor="exam-description" className="text-lg font-semibold text-slate-800">
+          <label htmlFor="exam-description" className={labelClass}>
             Mô tả / Hướng dẫn
           </label>
           <textarea
@@ -77,10 +121,12 @@ export default function CreateExamPage() {
           />
         </div>
         
+        <ClassroomSelector />
+
         {/* New Date Picker Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <label htmlFor="exam-start-time" className="text-lg font-semibold text-slate-800">
+                <label htmlFor="exam-start-time" className={labelClass}>
                     Thời gian bắt đầu
                 </label>
                 <button
@@ -94,7 +140,7 @@ export default function CreateExamPage() {
                 </button>
             </div>
              <div>
-                <label htmlFor="exam-end-time" className="text-lg font-semibold text-slate-800">
+                <label htmlFor="exam-end-time" className={labelClass}>
                     Thời gian kết thúc
                 </label>
                 <button
@@ -109,7 +155,7 @@ export default function CreateExamPage() {
             </div>
         </div>
          <div>
-            <label htmlFor="exam-password" className="text-lg font-semibold text-slate-800">
+            <label htmlFor="exam-password" className={labelClass}>
                 Mật khẩu (tùy chọn)
             </label>
             <input
