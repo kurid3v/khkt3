@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use server';
 
@@ -75,6 +76,7 @@ export async function createProblem(data: {
   // common fields
   examId?: string;
   classroomIds?: string[];
+  disablePaste?: boolean;
 }) {
   try {
     const existingProblem = db.all.problems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase() && !p.examId);
@@ -89,6 +91,7 @@ export async function createProblem(data: {
         type: data.type,
         examId: data.examId,
         classroomIds: data.classroomIds,
+        disablePaste: data.disablePaste,
         ...(data.type === 'essay' ? {
             prompt: data.prompt,
             rawRubric: data.rawRubric,
@@ -99,10 +102,7 @@ export async function createProblem(data: {
             passage: data.passage,
             questions: data.questions,
             // Reading comprehension score is calculated from questions
-            customMaxScore: data.questions?.reduce((acc, q) => {
-                if (q.questionType === 'multiple_choice') return acc + 1;
-                return acc + (q.maxScore || 1); // default short answer to 1 point if not set
-            }, 0) || 0,
+            customMaxScore: data.questions?.reduce((acc, q) => acc + (q.maxScore || 1), 0) || 0,
         })
     };
 

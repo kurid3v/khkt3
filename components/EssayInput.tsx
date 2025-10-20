@@ -1,4 +1,5 @@
 
+
 'use client';
 import React from 'react';
 import CameraIcon from './icons/CameraIcon';
@@ -9,12 +10,14 @@ interface EssayInputProps {
   onSubmit: () => void;
   isLoading: boolean;
   onScanClick?: () => void;
+  disablePaste?: boolean;
 }
 
 const EssayInput: React.FC<EssayInputProps> = ({ 
   essay, setEssay, 
   onSubmit, isLoading,
-  onScanClick
+  onScanClick,
+  disablePaste
 }) => {
   return (
     <div className="flex flex-col gap-6">
@@ -39,6 +42,8 @@ const EssayInput: React.FC<EssayInputProps> = ({
           id="essay-input"
           value={essay}
           onChange={(e) => setEssay(e.target.value)}
+          onPaste={disablePaste ? (e) => e.preventDefault() : undefined}
+          title={disablePaste ? "Dán văn bản đã bị vô hiệu hóa cho bài tập này." : ""}
           placeholder="Dán bài văn của bạn vào đây hoặc dùng tính năng quét..."
           className="w-full h-64 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y disabled:bg-slate-100 disabled:cursor-not-allowed"
           disabled={isLoading}

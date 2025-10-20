@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Feedback, RubricItem, Problem, Answer, Question, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
 
@@ -270,7 +271,7 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
     for (const question of multipleChoiceQuestions) {
         const studentAnswer = answers.find(a => a.questionId === question.id);
         const isCorrect = studentAnswer?.selectedOptionId === question.correctOptionId;
-        const score = isCorrect ? 1 : 0;
+        const score = isCorrect ? (question.maxScore ?? 1) : 0;
         const correctOptionText = question.options?.find(o => o.id === question.correctOptionId)?.text;
         const feedback = isCorrect 
             ? "Bạn đã trả lời đúng." 
@@ -350,10 +351,7 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
         }
     }
     
-    const totalMaxScore = questions.reduce((acc, q) => {
-        if (q.questionType === 'multiple_choice') return acc + 1;
-        return acc + (q.maxScore || 1);
-    }, 0);
+    const totalMaxScore = questions.reduce((acc, q) => acc + (q.maxScore ?? 1), 0);
 
     return {
         detailedFeedback,

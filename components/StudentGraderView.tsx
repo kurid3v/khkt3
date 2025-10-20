@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Submission, Problem, User } from '@/types';
@@ -81,6 +82,7 @@ const StudentGraderView: React.FC<StudentGraderViewProps> = ({ problem, user, on
           onSubmit={handleGradeEssay}
           isLoading={isLoading}
           onScanClick={() => setIsScannerOpen(true)}
+          disablePaste={problem.disablePaste}
         />
 
         <div className="mt-8">

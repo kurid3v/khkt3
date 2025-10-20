@@ -1,3 +1,5 @@
+
+
 'use client';
 import React, { useState, useTransition } from 'react';
 import type { Problem, User, Answer, Submission } from '@/types';
@@ -131,6 +133,8 @@ const ReadingComprehensionSolver: React.FC<ReadingComprehensionSolverProps> = ({
                       <textarea
                           value={answers[q.id]?.writtenAnswer || ''}
                           onChange={(e) => handleTextChange(q.id, e.target.value)}
+                          onPaste={problem.disablePaste ? (e) => e.preventDefault() : undefined}
+                          title={problem.disablePaste ? "Dán văn bản đã bị vô hiệu hóa cho bài tập này." : ""}
                           placeholder="Nhập câu trả lời của bạn..."
                           className="w-full p-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-primary resize-y disabled:bg-muted disabled:cursor-not-allowed"
                           rows={4}

@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import React, { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,6 +20,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
     const [title, setTitle] = useState('');
     const [error, setError] = useState('');
     const [isPending, startTransition] = useTransition();
+    const [disablePaste, setDisablePaste] = useState(false);
     
     // Essay state
     const [prompt, setPrompt] = useState('');
@@ -36,6 +38,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
     useEffect(() => {
         if (problem) {
             setTitle(problem.title);
+            setDisablePaste(problem.disablePaste || false);
             if (problem.type === 'essay') {
                 setPrompt(problem.prompt || '');
                 setRawRubric(problem.rawRubric || '');
@@ -70,6 +73,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
         questionType: 'multiple_choice',
         options: [{ id: newOptionId, text: '' }],
         correctOptionId: newOptionId,
+        maxScore: 1,
       }]);
     };
     const removeQuestion = (qId: string) => setQuestions(questions.filter(q => q.id !== qId));
@@ -80,17 +84,22 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
       setQuestions(questions.map(q => {
           if (q.id === qId) {
               const newQ: Question = { ...q, questionType: type };
-              if (type === 'multiple_choice' && !q.options?.length) {
-                  const newOptionId = crypto.randomUUID();
-                  newQ.options = [{ id: newOptionId, text: '' }];
-                  newQ.correctOptionId = newOptionId;
-                  delete newQ.maxScore;
-              } else if (type === 'short_answer') {
-                  delete newQ.options;
-                  delete newQ.correctOptionId;
-                  newQ.maxScore = 1;
-              }
-              return newQ;
+               if (type === 'multiple_choice') {
+                if (!q.options?.length) { // Only add options if they don't exist
+                    const newOptionId = crypto.randomUUID();
+                    newQ.options = [{ id: newOptionId, text: '' }];
+                    newQ.correctOptionId = newOptionId;
+                }
+                delete newQ.gradingCriteria;
+            } else { // type === 'short_answer'
+                delete newQ.options;
+                delete newQ.correctOptionId;
+            }
+            // Ensure maxScore exists, default to 1
+            if (newQ.maxScore === undefined || newQ.maxScore === null) {
+                newQ.maxScore = 1;
+            }
+            return newQ;
           }
           return q;
       }));
@@ -143,7 +152,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
             }
             updatedProblemData = {
                 ...problem, title, prompt, rawRubric, rubricItems,
-                customMaxScore: Number(customMaxScore), isRubricHidden,
+                customMaxScore: Number(customMaxScore), isRubricHidden, disablePaste,
             };
         } else { // reading_comprehension
             if (!passage.trim()) {
@@ -155,11 +164,8 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                 return;
             }
              updatedProblemData = {
-                ...problem, title, passage, questions,
-                customMaxScore: questions.reduce((acc, q) => {
-                    if (q.questionType === 'multiple_choice') return acc + 1;
-                    return acc + (q.maxScore || 1);
-                }, 0),
+                ...problem, title, passage, questions, disablePaste,
+                customMaxScore: questions.reduce((acc, q) => acc + (q.maxScore || 1), 0),
             };
         }
         
@@ -200,6 +206,26 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
     const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring";
     const textareaClass = `${inputClass} resize-y`;
     const labelClass = "text-base font-semibold text-foreground";
+    
+    const ProblemOptions = () => (
+      <div className="pt-6 border-t border-border">
+        <label className={labelClass}>Tùy chọn bài tập</label>
+        <div className="mt-2 p-4 bg-secondary/30 rounded-lg">
+            <label className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted cursor-pointer">
+                <div>
+                    <span className="font-medium text-foreground">Vô hiệu hóa dán (paste)</span>
+                    <p className="text-sm text-muted-foreground">Ngăn học sinh dán văn bản từ bên ngoài vào ô trả lời.</p>
+                </div>
+                <input
+                    type="checkbox"
+                    checked={disablePaste}
+                    onChange={(e) => setDisablePaste(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-primary focus:ring-primary rounded"
+                />
+            </label>
+        </div>
+      </div>
+    );
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -231,6 +257,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                   <label htmlFor="problem-prompt" className={labelClass}>Đề bài / Yêu cầu chi tiết</label>
                   <textarea id="problem-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Nhập nội dung đề bài văn..." className={`${textareaClass} h-40`} />
                 </div>
+                <ProblemOptions />
                 <div>
                     <label htmlFor="max-score-input" className={labelClass}>Thang điểm</label>
                     <input id="max-score-input" type="number" value={customMaxScore} onChange={(e) => setCustomMaxScore(e.target.value)} min="1" step="any" className={`${inputClass} w-40`} />
@@ -280,6 +307,7 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                   <label htmlFor="passage-input" className={labelClass}>Đoạn văn đọc hiểu</label>
                   <textarea id="passage-input" value={passage} onChange={(e) => setPassage(e.target.value)} placeholder="Dán đoạn văn vào đây..." className={`${textareaClass} h-60`} />
                 </div>
+                <ProblemOptions />
                 <div className="pt-6 border-t border-border space-y-4">
                   <div className="flex justify-between items-center">
                     <label className={labelClass}>Câu hỏi</label>
@@ -315,6 +343,19 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
                               </div>
                             ))}
                             <button type="button" onClick={() => addOption(q.id)} className="px-3 py-1 text-xs text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm lựa chọn</button>
+                            <div className="flex items-center gap-2 pt-2">
+                                <label htmlFor={`maxscore-mc-${q.id}`} className="text-sm font-semibold text-muted-foreground">Điểm tối đa:</label>
+                                <input
+                                    id={`maxscore-mc-${q.id}`}
+                                    type="number"
+                                    value={q.maxScore || ''}
+                                    onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
+                                    className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
+                                    placeholder="1"
+                                    min="0.25"
+                                    step="0.25"
+                                />
+                            </div>
                           </div>
                       ) : (
                         <div className="pl-8 space-y-2">

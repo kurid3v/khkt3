@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -56,10 +57,7 @@ const ReadingComprehensionResult: React.FC<{
 
         const newTotalScore = newDetailedFeedback.reduce((acc, item) => acc + item.score, 0);
 
-        const newMaxScore = questions.reduce((acc, q) => {
-            if (q.questionType === 'multiple_choice') return acc + 1;
-            return acc + (q.maxScore || 1);
-        }, 0);
+        const newMaxScore = questions.reduce((acc, q) => acc + (q.maxScore ?? 1), 0);
 
         const updatedFeedback: Feedback = {
             ...submission.feedback,
@@ -110,7 +108,7 @@ const ReadingComprehensionResult: React.FC<{
             {questions.map((q, index) => {
                 const answer = submission.answers?.find(a => a.questionId === q.id);
                 const originalFeedbackItem = submission.feedback.detailedFeedback.find(f => (f.questionId || questions.find(q => q.questionText === f.criterion)?.id) === q.id);
-                const maxScore = q.questionType === 'multiple_choice' ? 1 : (q.maxScore || 1);
+                const maxScore = q.maxScore ?? 1;
                 const isCorrect = originalFeedbackItem ? originalFeedbackItem.score === maxScore : false;
                 
                 let borderColorClass = 'border-border';

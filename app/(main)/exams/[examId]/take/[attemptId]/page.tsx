@@ -4,6 +4,8 @@
 
 
 
+
+
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -242,6 +244,8 @@ export default function ExamTakingPage({ params }: { params: { examId: string; a
                                 <textarea
                                     value={answers[activeProblemId] || ''}
                                     onChange={(e) => handleAnswerChange(activeProblemId, e.target.value)}
+                                    onPaste={activeProblem.disablePaste ? (e) => e.preventDefault() : undefined}
+                                    title={activeProblem.disablePaste ? "Dán văn bản đã bị vô hiệu hóa cho bài tập này." : ""}
                                     placeholder="Nhập câu trả lời của bạn vào đây..."
                                     className="w-full h-full flex-grow p-4 resize-none border-0 focus:ring-0 text-lg leading-relaxed"
                                 />

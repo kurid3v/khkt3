@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   username: string; // for login
@@ -25,6 +26,7 @@ export interface Question {
   id: string;
   questionText: string;
   questionType: 'multiple_choice' | 'short_answer';
+  maxScore?: number; // Score for this question for both types, defaults to 1
   
   // Multiple choice fields
   options?: Option[];
@@ -32,7 +34,6 @@ export interface Question {
   
   // Short answer fields
   gradingCriteria?: string; // Model answer or criteria for AI
-  maxScore?: number;
 }
 
 export interface Problem {
@@ -43,6 +44,7 @@ export interface Problem {
   examId?: string; // ID of the exam this problem belongs to
   customMaxScore?: number;
   classroomIds?: string[]; // IDs of classrooms this problem is assigned to
+  disablePaste?: boolean; // New: Prevent pasting into input fields
 
   type: 'essay' | 'reading_comprehension';
 
