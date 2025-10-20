@@ -1,402 +1,363 @@
-
-
-
+// FIX: Create the page component for editing existing problems.
 'use client';
-import React, { useState, useEffect, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+
+import React, { useState, useTransition, useMemo, useEffect } from 'react';
+import { useRouter, notFound } from 'next/navigation';
+import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
-import type { Problem, RubricItem, Question, Option } from '@/types';
+import { updateProblem } from '@/app/actions';
 import { parseRubric } from '@/services/geminiService';
-import BookOpenIcon from '@/components/icons/BookOpenIcon';
-import ClipboardListIcon from '@/components/icons/ClipboardListIcon';
+import type { Problem, RubricItem, Question, Option } from '@/types';
 import TrashIcon from '@/components/icons/TrashIcon';
+
+// A sub-component to manage individual questions for reading comprehension (re-used from create page logic)
+const QuestionEditor: React.FC<{
+    question: Question;
+    index: number;
+    onUpdate: (index: number, updatedQuestion: Question) => void;
+    onRemove: (index: number) => void;
+}> = ({ question, index, onUpdate, onRemove }) => {
+
+    const handleOptionChange = (optIndex: number, text: string) => {
+        const newOptions = [...(question.options || [])];
+        newOptions[optIndex] = { ...newOptions[optIndex], text };
+        onUpdate(index, { ...question, options: newOptions });
+    };
+
+    const handleAddOption = () => {
+        const newOptions = [...(question.options || []), { id: crypto.randomUUID(), text: '' }];
+        onUpdate(index, { ...question, options: newOptions });
+    };
+
+    const handleRemoveOption = (optIndex: number) => {
+        const newOptions = [...(question.options || [])];
+        const removedOption = newOptions.splice(optIndex, 1)[0];
+        const newQuestion = { ...question, options: newOptions };
+        if (question.correctOptionId === removedOption.id) {
+            newQuestion.correctOptionId = undefined;
+        }
+        onUpdate(index, newQuestion);
+    };
+
+    return (
+        <div className="bg-secondary/50 p-4 rounded-lg border border-border">
+            <div className="flex justify-between items-center mb-3">
+                <p className="font-semibold text-foreground">Câu hỏi {index + 1}</p>
+                <button type="button" onClick={() => onRemove(index)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full">
+                    <TrashIcon />
+                </button>
+            </div>
+            <div className="space-y-4">
+                <textarea
+                    value={question.questionText}
+                    onChange={e => onUpdate(index, { ...question, questionText: e.target.value })}
+                    placeholder="Nội dung câu hỏi"
+                    className="w-full p-2 border border-border rounded-md bg-background"
+                    rows={2}
+                />
+                 <div className="flex items-center gap-4">
+                    <select
+                        value={question.questionType}
+                        onChange={e => onUpdate(index, { ...question, questionType: e.target.value as 'multiple_choice' | 'short_answer' })}
+                        className="p-2 border border-border rounded-md bg-background"
+                    >
+                        <option value="multiple_choice">Trắc nghiệm</option>
+                        <option value="short_answer">Tự luận</option>
+                    </select>
+                    <div className="flex items-center gap-2">
+                         <label className="text-sm font-medium">Điểm:</label>
+                        <input
+                            type="number"
+                            value={question.maxScore || 1}
+                            onChange={e => onUpdate(index, { ...question, maxScore: Number(e.target.value) || 1 })}
+                            className="w-20 p-2 border border-border rounded-md bg-background"
+                            min="0.25"
+                            step="0.25"
+                        />
+                    </div>
+                </div>
+
+                {question.questionType === 'multiple_choice' && (
+                    <div className="pl-4 border-l-2 border-border space-y-2">
+                        {question.options?.map((opt, optIndex) => (
+                            <div key={opt.id} className="flex items-center gap-2">
+                                <input
+                                    type="radio"
+                                    name={`correct-option-${question.id}`}
+                                    checked={question.correctOptionId === opt.id}
+                                    onChange={() => onUpdate(index, { ...question, correctOptionId: opt.id })}
+                                    className="form-radio text-primary focus:ring-primary"
+                                />
+                                <input
+                                    type="text"
+                                    value={opt.text}
+                                    onChange={e => handleOptionChange(optIndex, e.target.value)}
+                                    placeholder={`Lựa chọn ${optIndex + 1}`}
+                                    className="flex-grow p-2 border border-border rounded-md bg-background"
+                                />
+                                <button type="button" onClick={() => handleRemoveOption(optIndex)} className="text-muted-foreground hover:text-destructive p-1">
+                                    &times;
+                                </button>
+                            </div>
+                        ))}
+                        <button type="button" onClick={handleAddOption} className="text-sm font-semibold text-primary hover:underline">
+                            + Thêm lựa chọn
+                        </button>
+                    </div>
+                )}
+                {question.questionType === 'short_answer' && (
+                    <textarea
+                        value={question.gradingCriteria}
+                        onChange={e => onUpdate(index, { ...question, gradingCriteria: e.target.value })}
+                        placeholder="Đáp án mẫu hoặc tiêu chí chấm..."
+                        className="w-full p-2 border border-border rounded-md bg-background"
+                        rows={2}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
 
 export default function EditProblemPage({ params }: { params: { problemId: string } }) {
     const router = useRouter();
-    const { problems, updateProblem: updateProblemInContext } = useDataContext(); // Renamed to avoid conflict
-    const problem = problems.find(p => p.id === params.problemId);
+    const { problems, currentUser, classrooms, isLoading: isDataLoading } = useDataContext();
 
-    // Common state
+    const [problem, setProblem] = useState<Problem | null>(null);
+
+    // Form state
+    const [problemType, setProblemType] = useState<'essay' | 'reading_comprehension'>('essay');
     const [title, setTitle] = useState('');
     const [error, setError] = useState('');
-    const [isPending, startTransition] = useTransition();
     const [disablePaste, setDisablePaste] = useState(false);
-    
+    const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
+
     // Essay state
     const [prompt, setPrompt] = useState('');
     const [rawRubric, setRawRubric] = useState('');
     const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
-    const [customMaxScore, setCustomMaxScore] = useState<string>('10');
+    const [customMaxScore, setCustomMaxScore] = useState(10);
     const [isRubricHidden, setIsRubricHidden] = useState(false);
     const [isParsingRubric, setIsParsingRubric] = useState(false);
-    const [parsingError, setParsingError] = useState('');
-    
-    // Reading Comprehension state
+
+    // Reading comprehension state
     const [passage, setPassage] = useState('');
     const [questions, setQuestions] = useState<Question[]>([]);
 
+    const [isPending, startTransition] = useTransition();
+
     useEffect(() => {
-        if (problem) {
-            setTitle(problem.title);
-            setDisablePaste(problem.disablePaste || false);
-            if (problem.type === 'essay') {
-                setPrompt(problem.prompt || '');
-                setRawRubric(problem.rawRubric || '');
-                setRubricItems(problem.rubricItems || []);
-                setCustomMaxScore(String(problem.customMaxScore || '10'));
-                setIsRubricHidden(problem.isRubricHidden || false);
-            } else if (problem.type === 'reading_comprehension') {
-                setPassage(problem.passage || '');
-                setQuestions(problem.questions || []);
+        const foundProblem = problems.find(p => p.id === params.problemId);
+        if (foundProblem) {
+            setProblem(foundProblem);
+            setTitle(foundProblem.title);
+            setProblemType(foundProblem.type);
+            setDisablePaste(foundProblem.disablePaste || false);
+            setSelectedClassroomIds(foundProblem.classroomIds || []);
+
+            if (foundProblem.type === 'essay') {
+                setPrompt(foundProblem.prompt || '');
+                setRawRubric(foundProblem.rawRubric || '');
+                setRubricItems(foundProblem.rubricItems || []);
+                setCustomMaxScore(foundProblem.customMaxScore || 10);
+                setIsRubricHidden(foundProblem.isRubricHidden || false);
+            } else {
+                setPassage(foundProblem.passage || '');
+                setQuestions(foundProblem.questions || []);
             }
         }
-    }, [problem]);
+    }, [problems, params.problemId]);
 
-    if (!problem) {
-        return <p className="p-8">Đang tải hoặc không tìm thấy bài tập...</p>;
-    }
+    const teacherClassrooms = useMemo(() => 
+        currentUser ? classrooms.filter(c => c.teacherId === currentUser.id) : [],
+        [classrooms, currentUser]
+    );
 
-    // --- Essay Rubric Methods ---
-    const addRubricItem = () => setRubricItems([...rubricItems, { id: crypto.randomUUID(), criterion: '', maxScore: 0 }]);
-    const updateRubricItem = (id: string, field: 'criterion' | 'maxScore', value: string) => {
-        setRubricItems(rubricItems.map(item => item.id === id ? { ...item, [field]: field === 'maxScore' ? Number(value) : value } : item));
-    };
-    const removeRubricItem = (id: string) => setRubricItems(rubricItems.filter(item => item.id !== id));
-    const totalMaxScore = rubricItems.reduce((acc, item) => acc + item.maxScore, 0);
-
-    // --- Reading Comprehension Question Methods ---
-    const addQuestion = () => {
-      const newOptionId = crypto.randomUUID();
-      setQuestions([...questions, {
-        id: crypto.randomUUID(),
-        questionText: '',
-        questionType: 'multiple_choice',
-        options: [{ id: newOptionId, text: '' }],
-        correctOptionId: newOptionId,
-        maxScore: 1,
-      }]);
-    };
-    const removeQuestion = (qId: string) => setQuestions(questions.filter(q => q.id !== qId));
-    const updateQuestionText = (qId: string, text: string) => {
-      setQuestions(questions.map(q => q.id === qId ? { ...q, questionText: text } : q));
-    };
-    const setQuestionType = (qId: string, type: 'multiple_choice' | 'short_answer') => {
-      setQuestions(questions.map(q => {
-          if (q.id === qId) {
-              const newQ: Question = { ...q, questionType: type };
-               if (type === 'multiple_choice') {
-                if (!q.options?.length) { // Only add options if they don't exist
-                    const newOptionId = crypto.randomUUID();
-                    newQ.options = [{ id: newOptionId, text: '' }];
-                    newQ.correctOptionId = newOptionId;
-                }
-                delete newQ.gradingCriteria;
-            } else { // type === 'short_answer'
-                delete newQ.options;
-                delete newQ.correctOptionId;
-            }
-            // Ensure maxScore exists, default to 1
-            if (newQ.maxScore === undefined || newQ.maxScore === null) {
-                newQ.maxScore = 1;
-            }
-            return newQ;
-          }
-          return q;
-      }));
-    };
-    const updateGradingCriteria = (qId: string, text: string) => {
-      setQuestions(questions.map(q => q.id === qId ? { ...q, gradingCriteria: text } : q));
-    }
-     const updateQuestionMaxScore = (qId: string, value: string) => {
-        const normalizedValue = value.replace(',', '.');
-        const score = parseFloat(normalizedValue);
-        setQuestions(questions.map(q => q.id === qId ? { ...q, maxScore: isNaN(score) ? undefined : score } : q));
-    };
-    const addOption = (qId: string) => {
-      setQuestions(questions.map(q => q.id === qId ? { ...q, options: [...(q.options || []), { id: crypto.randomUUID(), text: '' }] } : q));
-    };
-    const removeOption = (qId: string, oId: string) => {
-      setQuestions(questions.map(q => {
-        if (q.id === qId && q.options) {
-          const newOptions = q.options.filter(o => o.id !== oId);
-          const newCorrectId = q.correctOptionId === oId ? (newOptions[0]?.id || '') : q.correctOptionId;
-          return { ...q, options: newOptions, correctOptionId: newCorrectId };
-        }
-        return q;
-      }));
-    };
-    const updateOptionText = (qId: string, oId: string, text: string) => {
-      setQuestions(questions.map(q => q.id === qId
-        ? { ...q, options: q.options?.map(o => o.id === oId ? { ...o, text } : o) }
-        : q));
-    };
-    const setCorrectOption = (qId: string, oId: string) => {
-      setQuestions(questions.map(q => q.id === qId ? { ...q, correctOptionId: oId } : q));
-    };
-    
-    // --- Form Submission ---
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        if (!title.trim()) {
-            setError('Tiêu đề không được để trống.');
-            return;
-        }
-
-        let updatedProblemData: Problem;
-
-        if (problem.type === 'essay') {
-            if (!prompt.trim()) {
-                setError('Đề bài không được để trống.');
-                return;
-            }
-            updatedProblemData = {
-                ...problem, title, prompt, rawRubric, rubricItems,
-                customMaxScore: Number(customMaxScore), isRubricHidden, disablePaste,
-            };
-        } else { // reading_comprehension
-            if (!passage.trim()) {
-                setError('Đoạn văn không được để trống.');
-                return;
-            }
-            if (questions.length === 0 || questions.some(q => !q.questionText.trim() || (q.questionType === 'multiple_choice' && (q.options?.length ?? 0) < 2) || (q.questionType === 'multiple_choice' && q.options?.some(o => !o.text.trim())))) {
-                setError('Phải có ít nhất một câu hỏi, mỗi câu hỏi trắc nghiệm phải có ít nhất hai lựa chọn và không có trường nào được để trống.');
-                return;
-            }
-             updatedProblemData = {
-                ...problem, title, passage, questions, disablePaste,
-                customMaxScore: questions.reduce((acc, q) => acc + (q.maxScore || 1), 0),
-            };
-        }
-        
-        startTransition(async () => {
-            try {
-                await updateProblemInContext(updatedProblemData);
-                const destination = problem.examId ? `/exams/${problem.examId}` : '/dashboard';
-                router.push(destination);
-            } catch (err) {
-                 setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra. Vui lòng thử lại.");
-            }
-        });
-    };
-  
     const handleParseRubric = async () => {
+        // Same as create page
         if (!rawRubric.trim()) return;
         setIsParsingRubric(true);
-        setParsingError('');
+        setError('');
         try {
             const parsedItems = await parseRubric(rawRubric);
-            if (parsedItems && parsedItems.length > 0) {
-                setRubricItems(parsedItems.map(item => ({ ...item, id: crypto.randomUUID() })));
-            } else {
-                setParsingError("AI không thể tìm thấy tiêu chí nào trong văn bản được cung cấp.");
-            }
-        } catch (e) {
-            console.error("Rubric parsing failed", e);
-            setParsingError("Đã xảy ra lỗi khi phân tích hướng dẫn chấm. Vui lòng thử lại.");
+            const itemsWithIds = parsedItems.map(item => ({...item, id: crypto.randomUUID()}))
+            setRubricItems(itemsWithIds);
+        } catch (err) {
+            setError("Không thể phân tích biểu điểm. Vui lòng kiểm tra lại văn bản hoặc thử lại.");
         } finally {
             setIsParsingRubric(false);
         }
     };
-
-    const onCancel = () => {
-        router.back();
+    
+    // Question handlers are identical to create page
+    const handleAddQuestion = () => {
+        const newQuestion: Question = { id: crypto.randomUUID(), questionText: '', questionType: 'multiple_choice', options: [{ id: crypto.randomUUID(), text: '' }], maxScore: 1 };
+        setQuestions([...questions, newQuestion]);
+    };
+    const handleUpdateQuestion = (index: number, updatedQuestion: Question) => {
+        const newQuestions = [...questions];
+        newQuestions[index] = updatedQuestion;
+        setQuestions(newQuestions);
+    };
+    const handleRemoveQuestion = (index: number) => {
+        setQuestions(questions.filter((_, i) => i !== index));
     };
 
-    const inputClass = "mt-1 block w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring";
-    const textareaClass = `${inputClass} resize-y`;
-    const labelClass = "text-base font-semibold text-foreground";
-    
-    const ProblemOptions = () => (
-      <div className="pt-6 border-t border-border">
-        <label className={labelClass}>Tùy chọn bài tập</label>
-        <div className="mt-2 p-4 bg-secondary/30 rounded-lg">
-            <label className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted cursor-pointer">
-                <div>
-                    <span className="font-medium text-foreground">Vô hiệu hóa dán (paste)</span>
-                    <p className="text-sm text-muted-foreground">Ngăn học sinh dán văn bản từ bên ngoài vào ô trả lời.</p>
-                </div>
-                <input
-                    type="checkbox"
-                    checked={disablePaste}
-                    onChange={(e) => setDisablePaste(e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-primary focus:ring-primary rounded"
-                />
-            </label>
-        </div>
-      </div>
-    );
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!problem) return;
+        setError('');
+
+        const problemData: Partial<Problem> = {
+            title: title.trim(),
+            type: problemType,
+            disablePaste,
+            classroomIds: selectedClassroomIds,
+        };
+
+        if (problemType === 'essay') {
+            problemData.prompt = prompt.trim();
+            problemData.rawRubric = rawRubric.trim();
+            problemData.rubricItems = rubricItems;
+            problemData.customMaxScore = customMaxScore;
+            problemData.isRubricHidden = isRubricHidden;
+        } else {
+            problemData.passage = passage.trim();
+            problemData.questions = questions;
+        }
+
+        startTransition(async () => {
+            try {
+                await updateProblem(problem.id, problemData);
+                router.push(`/problems/${problem.id}`);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra khi cập nhật.");
+            }
+        });
+    };
+
+    const handleClassroomToggle = (classId: string) => {
+        setSelectedClassroomIds(prev => 
+            prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
+        );
+    };
+
+
+    const inputClass = "w-full p-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/50";
+    const labelClass = "text-lg font-semibold text-foreground";
+
+    if (isDataLoading) {
+        return <div className="container mx-auto px-4 py-8 text-center">Đang tải dữ liệu...</div>;
+    }
+
+    if (!problem) {
+        // Let notFound handle it after data has loaded
+        if (!isDataLoading) {
+            notFound();
+        }
+        return null;
+    }
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-3xl font-bold text-foreground mb-8">Chỉnh sửa bài tập</h1>
-        <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-sm border border-border space-y-6">
-            
-             <div className="p-4 bg-secondary/30 rounded-lg flex items-center gap-4">
-                <span className="font-semibold text-muted-foreground">Loại bài tập:</span>
-                <div className="flex items-center gap-2 font-bold text-primary">
-                    {problem.type === 'essay' ? <BookOpenIcon className="w-6 h-6"/> : <ClipboardListIcon className="w-6 h-6"/>}
-                    <span>{problem.type === 'essay' ? 'Bài làm văn' : 'Đọc hiểu văn bản'}</span>
-                </div>
-                <span className="text-sm text-muted-foreground">(Không thể thay đổi)</span>
-            </div>
-
-            {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md">{error}</p>}
-            
-            <div>
-                <label htmlFor="problem-title" className={labelClass}>
-                    Tiêu đề bài tập / Tên câu hỏi
-                </label>
-                <input id="problem-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nhập tiêu đề..." className={inputClass} />
-            </div>
-
-            {/* --- ESSAY FORM --- */}
-            {problem.type === 'essay' && (
-              <div className="space-y-6 animate-fade-in">
+            <Link href={`/problems/${problem.id}`} className="mb-6 text-primary font-semibold hover:underline inline-block">
+                &larr; Quay lại bài tập
+            </Link>
+            <h1 className="text-3xl font-bold text-foreground mb-6">
+                Chỉnh sửa bài tập
+            </h1>
+            <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-card border border-border space-y-8">
+                 {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
+                
                 <div>
-                  <label htmlFor="problem-prompt" className={labelClass}>Đề bài / Yêu cầu chi tiết</label>
-                  <textarea id="problem-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Nhập nội dung đề bài văn..." className={`${textareaClass} h-40`} />
+                    <label className={labelClass}>Loại bài tập</label>
+                    <div className="mt-2 text-muted-foreground">Không thể thay đổi loại bài tập sau khi đã tạo.</div>
                 </div>
-                <ProblemOptions />
+
                 <div>
-                    <label htmlFor="max-score-input" className={labelClass}>Thang điểm</label>
-                    <input id="max-score-input" type="number" value={customMaxScore} onChange={(e) => setCustomMaxScore(e.target.value)} min="1" step="any" className={`${inputClass} w-40`} />
-                    <p className="text-sm text-muted-foreground mt-1">Điểm cuối cùng sẽ được quy đổi về thang điểm này.</p>
+                    <label htmlFor="problem-title" className={labelClass}>Tiêu đề {problemType === 'essay' ? 'bài tập' : 'bài đọc hiểu'}</label>
+                    <input id="problem-title" type="text" value={title} onChange={e => setTitle(e.target.value)} className={`mt-2 ${inputClass}`} required />
                 </div>
-                <div className="pt-6 border-t border-border">
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                     <label className={labelClass}>Biểu điểm chấm (tùy chọn)</label>
-                     <div className="flex items-center gap-2">
-                        <label htmlFor="hide-rubric-toggle" className="text-sm font-medium text-muted-foreground cursor-pointer">Ẩn với học sinh</label>
-                        <button type="button" id="hide-rubric-toggle" onClick={() => setIsRubricHidden(!isRubricHidden)} className={`${isRubricHidden ? 'bg-primary' : 'bg-input'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent`} role="switch" aria-checked={isRubricHidden}>
-                            <span aria-hidden="true" className={`${isRubricHidden ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0`} />
-                        </button>
-                     </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1 mb-2">Cung cấp biểu điểm để AI chấm chính xác hơn.</p>
-                  <div className="mt-2 flex flex-col gap-3 p-4 bg-secondary/30 rounded-lg">
-                    <div className="flex justify-between items-center gap-2">
-                        <label htmlFor="raw-rubric-input" className="text-md font-semibold text-foreground">Dán toàn bộ hướng dẫn chấm</label>
-                        <button type="button" onClick={handleParseRubric} disabled={!rawRubric.trim() || isParsingRubric} className="px-3 py-1.5 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md disabled:opacity-50 flex items-center gap-2">
-                            {isParsingRubric ? 'Đang phân tích...' : 'Phân tích bằng AI'}
-                        </button>
-                    </div>
-                    <textarea id="raw-rubric-input" value={rawRubric} onChange={(e) => setRawRubric(e.target.value)} placeholder="Dán hướng dẫn chấm vào đây..." className={`${textareaClass} h-40 bg-card`} />
-                     {parsingError && <p className="text-sm text-destructive -mt-1">{parsingError}</p>}
-                    <div className="relative my-2"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div><div className="relative flex justify-center"><span className="bg-secondary/30 px-2 text-sm text-muted-foreground">HOẶC</span></div></div>
-                    <label className="text-md font-semibold text-foreground">Chỉnh sửa biểu điểm thủ công</label>
-                    {rubricItems.map((item, index) => (
-                        <div key={item.id} className="flex items-center gap-2">
-                          <span className="font-medium text-muted-foreground">{index + 1}.</span>
-                          <input type="text" value={item.criterion} onChange={(e) => updateRubricItem(item.id, 'criterion', e.target.value)} placeholder="Tên tiêu chí..." className="flex-grow p-2 border border-border rounded-md bg-card" />
-                          <input type="number" value={item.maxScore} min="0" step="any" onChange={(e) => updateRubricItem(item.id, 'maxScore', e.target.value)} placeholder="Điểm" className="w-24 p-2 border border-border rounded-md bg-card" />
-                          <button type="button" onClick={() => removeRubricItem(item.id)} className="p-2 text-muted-foreground hover:text-destructive rounded-full"> &times; </button>
+
+                {problemType === 'essay' ? (
+                    <div className="space-y-6">
+                        <div>
+                            <label htmlFor="problem-prompt" className={labelClass}>Đề bài</label>
+                            <textarea id="problem-prompt" value={prompt} onChange={e => setPrompt(e.target.value)} className={`mt-2 h-32 ${inputClass}`} />
                         </div>
-                    ))}
-                    <button type="button" onClick={addRubricItem} className="mt-2 self-start px-4 py-2 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm tiêu chí</button>
-                    {rubricItems.length > 0 && (<div className="mt-2 text-right font-semibold text-foreground">Tổng điểm: {totalMaxScore}</div>)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* --- READING COMPREHENSION FORM --- */}
-            {problem.type === 'reading_comprehension' && (
-              <div className="space-y-6 animate-fade-in">
-                <div>
-                  <label htmlFor="passage-input" className={labelClass}>Đoạn văn đọc hiểu</label>
-                  <textarea id="passage-input" value={passage} onChange={(e) => setPassage(e.target.value)} placeholder="Dán đoạn văn vào đây..." className={`${textareaClass} h-60`} />
-                </div>
-                <ProblemOptions />
-                <div className="pt-6 border-t border-border space-y-4">
-                  <div className="flex justify-between items-center">
-                    <label className={labelClass}>Câu hỏi</label>
-                    <button type="button" onClick={addQuestion} className="px-4 py-2 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm câu hỏi</button>
-                  </div>
-                  {questions.map((q, qIndex) => (
-                    <div key={q.id} className="p-4 bg-secondary/30 rounded-lg space-y-3">
-                      <div className="flex items-start gap-2">
-                        <label htmlFor={`q-text-${q.id}`} className="font-semibold text-foreground pt-2">Câu {qIndex + 1}</label>
-                        <div className="flex-grow">
-                          <input id={`q-text-${q.id}`} type="text" value={q.questionText} onChange={e => updateQuestionText(q.id, e.target.value)} placeholder="Nhập câu hỏi..." className="w-full p-2 border border-border rounded-md bg-card" />
-                          <div className="flex items-center gap-4 mt-2">
-                              <label className="text-sm font-semibold text-muted-foreground">Loại:</label>
-                              <div className="flex rounded-md border border-border p-0.5 bg-background">
-                                  <button type="button" onClick={() => setQuestionType(q.id, 'multiple_choice')} className={`px-3 py-1 text-xs rounded-sm ${q.questionType === 'multiple_choice' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Trắc nghiệm</button>
-                                  <button type="button" onClick={() => setQuestionType(q.id, 'short_answer')} className={`px-3 py-1 text-xs rounded-sm ${q.questionType === 'short_answer' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Tự luận</button>
-                              </div>
-                          </div>
+                        <div>
+                            <label htmlFor="problem-rubric" className={labelClass}>Hướng dẫn chấm (Biểu điểm)</label>
+                            <textarea id="problem-rubric" value={rawRubric} onChange={e => setRawRubric(e.target.value)} className={`mt-2 h-40 ${inputClass}`} placeholder="Dán biểu điểm chi tiết vào đây..." />
+                            <button type="button" onClick={handleParseRubric} disabled={isParsingRubric} className="mt-2 btn-secondary px-4 py-2 text-sm disabled:opacity-50">
+                                {isParsingRubric ? 'Đang phân tích...' : 'Phân tích biểu điểm bằng AI'}
+                            </button>
+                            {rubricItems.length > 0 && (
+                                <div className="mt-4 p-4 bg-secondary/50 rounded-md border border-border">
+                                    <p className="font-semibold mb-2">Các tiêu chí đã phân tích:</p>
+                                    <ul className="list-disc list-inside space-y-1 text-sm">
+                                        {rubricItems.map((item, i) => <li key={item.id || i}><strong>{item.criterion}:</strong> {item.maxScore} điểm</li>)}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
-                        <button type="button" onClick={() => removeQuestion(q.id)} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full" aria-label="Xóa câu hỏi">
-                          <TrashIcon />
-                        </button>
-                      </div>
-                      
-                      {q.questionType === 'multiple_choice' ? (
-                          <div className="pl-8 space-y-2">
-                            {q.options?.map((opt, oIndex) => (
-                              <div key={opt.id} className="flex items-center gap-2">
-                                <input type="radio" name={`correct-opt-${q.id}`} id={`radio-${opt.id}`} checked={q.correctOptionId === opt.id} onChange={() => setCorrectOption(q.id, opt.id)} className="form-radio h-4 w-4 text-primary focus:ring-primary"/>
-                                <label htmlFor={`radio-${opt.id}`} className="sr-only">Đáp án đúng</label>
-                                <input type="text" value={opt.text} onChange={e => updateOptionText(q.id, opt.id, e.target.value)} placeholder={`Lựa chọn ${oIndex + 1}`} className="flex-grow p-2 border border-border rounded-md bg-card" />
-                                {(q.options?.length ?? 0) > 1 && <button type="button" onClick={() => removeOption(q.id, opt.id)} className="p-1 text-sm text-muted-foreground hover:text-destructive rounded-full">&times;</button>}
-                              </div>
-                            ))}
-                            <button type="button" onClick={() => addOption(q.id)} className="px-3 py-1 text-xs text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-md">+ Thêm lựa chọn</button>
-                            <div className="flex items-center gap-2 pt-2">
-                                <label htmlFor={`maxscore-mc-${q.id}`} className="text-sm font-semibold text-muted-foreground">Điểm tối đa:</label>
-                                <input
-                                    id={`maxscore-mc-${q.id}`}
-                                    type="number"
-                                    value={q.maxScore || ''}
-                                    onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
-                                    className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
-                                    placeholder="1"
-                                    min="0"
-                                    step="any"
-                                />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="problem-max-score" className={labelClass}>Thang điểm</label>
+                                <input id="problem-max-score" type="number" value={customMaxScore} onChange={e => setCustomMaxScore(Number(e.target.value))} className={`mt-2 ${inputClass}`} min="1" step="0.5" />
                             </div>
-                          </div>
-                      ) : (
-                        <div className="pl-8 space-y-2">
-                            <label htmlFor={`criteria-${q.id}`} className="text-sm font-semibold text-muted-foreground">Đáp án mẫu / Tiêu chí chấm (cho AI)</label>
-                            <textarea 
-                                id={`criteria-${q.id}`}
-                                value={q.gradingCriteria || ''} 
-                                onChange={e => updateGradingCriteria(q.id, e.target.value)}
-                                placeholder="Cung cấp đáp án mẫu hoặc tiêu chí để AI chấm điểm chính xác..."
-                                className="w-full p-2 border border-border rounded-md bg-card text-sm"
-                                rows={2}
-                            />
-                            <div className="flex items-center gap-2 pt-2">
-                                <label htmlFor={`maxscore-${q.id}`} className="text-sm font-semibold text-muted-foreground">Điểm tối đa:</label>
-                                <input
-                                    id={`maxscore-${q.id}`}
-                                    type="number"
-                                    value={q.maxScore || ''}
-                                    onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
-                                    className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
-                                    placeholder="1"
-                                    min="0"
-                                    step="any"
-                                />
+                            <div className="flex items-center gap-3 pt-8">
+                                <input id="problem-hide-rubric" type="checkbox" checked={isRubricHidden} onChange={e => setIsRubricHidden(e.target.checked)} className="h-5 w-5 rounded form-checkbox text-primary focus:ring-primary"/>
+                                <label htmlFor="problem-hide-rubric" className="font-medium">Ẩn hướng dẫn chấm với học sinh</label>
                             </div>
                         </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                ) : (
+                    <div className="space-y-6">
+                        <div>
+                            <label htmlFor="problem-passage" className={labelClass}>Đoạn văn</label>
+                            <textarea id="problem-passage" value={passage} onChange={e => setPassage(e.target.value)} className={`mt-2 h-48 ${inputClass}`} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Câu hỏi</label>
+                            <div className="mt-2 space-y-4">
+                                {questions.map((q, i) => <QuestionEditor key={q.id} question={q} index={i} onUpdate={handleUpdateQuestion} onRemove={handleRemoveQuestion} />)}
+                            </div>
+                            <button type="button" onClick={handleAddQuestion} className="mt-4 btn-secondary px-4 py-2 text-sm">+ Thêm câu hỏi</button>
+                        </div>
+                    </div>
+                )}
+                
+                {!problem.examId && (
+                     <div>
+                        <label className={labelClass}>Giao cho lớp học (tùy chọn)</label>
+                         <p className="text-sm text-muted-foreground mt-1 mb-2">Nếu không chọn lớp nào, bài tập sẽ được hiển thị cho tất cả học sinh.</p>
+                         {teacherClassrooms.length > 0 ? (
+                            <div className="mt-2 space-y-2 max-h-40 overflow-y-auto p-3 bg-secondary/50 rounded-lg border">
+                                {teacherClassrooms.map(c => (
+                                    <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted cursor-pointer has-[:checked]:bg-primary/10">
+                                        <input type="checkbox" checked={selectedClassroomIds.includes(c.id)} onChange={() => handleClassroomToggle(c.id)} className="form-checkbox h-4 w-4 text-primary focus:ring-primary" />
+                                        <span className="font-medium text-foreground">{c.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground p-3 bg-secondary/50 rounded-lg">Bạn chưa tạo lớp học nào. <Link href="/classrooms" className="text-primary font-semibold underline">Tạo lớp học mới</Link>.</p>
+                        )}
+                    </div>
+                )}
 
-            <div className="flex justify-end gap-4 pt-4 border-t border-border">
-                <button type="button" onClick={onCancel} className="px-6 py-3 bg-secondary text-secondary-foreground font-semibold rounded-md hover:bg-muted">Hủy</button>
-                <button type="submit" disabled={isPending} className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-md shadow-sm hover:bg-primary/90 disabled:opacity-50">
-                    {isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-            </div>
-        </form>
+                 <div className="flex items-center gap-3 pt-4 border-t border-border">
+                    <input id="problem-disable-paste" type="checkbox" checked={disablePaste} onChange={e => setDisablePaste(e.target.checked)} className="h-5 w-5 rounded form-checkbox text-primary focus:ring-primary"/>
+                    <label htmlFor="problem-disable-paste" className="font-medium">Vô hiệu hóa tính năng dán (paste) văn bản</label>
+                </div>
+
+                <div className="flex justify-end gap-4 pt-4 border-t border-border">
+                    <button type="button" onClick={() => router.back()} className="btn-secondary px-6 py-3">Hủy</button>
+                    <button type="submit" disabled={isPending} className="btn-primary px-6 py-3 disabled:opacity-50">
+                        {isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+                    </button>
+                </div>
+            </form>
         </div>
     );
-};
+}

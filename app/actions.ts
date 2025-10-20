@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use server';
 
@@ -118,6 +116,37 @@ export async function createProblem(data: {
         throw error;
     }
     throw new Error("Không thể tạo bài tập.");
+  }
+}
+
+export async function updateProblem(problemId: string, data: Partial<Problem>) {
+  try {
+    const problemData = { ...data };
+    
+    // Ensure only relevant data for the type is passed and recalculate score
+    if (problemData.type === 'essay') {
+      delete problemData.passage;
+      delete problemData.questions;
+    } else if (problemData.type === 'reading_comprehension' && problemData.questions) {
+      delete problemData.prompt;
+      delete problemData.rawRubric;
+      delete problemData.rubricItems;
+      delete problemData.isRubricHidden;
+      problemData.customMaxScore = problemData.questions.reduce((acc, q) => acc + (q.maxScore || 1), 0) || 0;
+    }
+    
+    db.problems.update(problemId, problemData);
+    
+    revalidatePath('/dashboard');
+    if (problemData.examId) {
+      revalidatePath(`/exams/${problemData.examId}`);
+    }
+    revalidatePath(`/problems/${problemId}`);
+    revalidatePath(`/problems/${problemId}/edit`);
+    revalidatePath('/admin');
+  } catch (error) {
+    console.error("Failed to update problem:", error);
+    throw new Error("Không thể cập nhật bài tập.");
   }
 }
 
