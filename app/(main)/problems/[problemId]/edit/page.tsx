@@ -1,7 +1,6 @@
-// FIX: Create the page component for editing existing problems.
 'use client';
 
-import React, { useState, useTransition, useMemo, useEffect } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { useRouter, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
@@ -119,54 +118,30 @@ const QuestionEditor: React.FC<{
     );
 };
 
-export default function EditProblemPage({ params }: { params: { problemId: string } }) {
+const EditProblemForm: React.FC<{ problem: Problem }> = ({ problem }) => {
     const router = useRouter();
-    const { problems, currentUser, classrooms, isLoading: isDataLoading } = useDataContext();
+    const { currentUser, classrooms } = useDataContext();
 
-    const [problem, setProblem] = useState<Problem | null>(null);
-
-    // Form state
-    const [problemType, setProblemType] = useState<'essay' | 'reading_comprehension'>('essay');
-    const [title, setTitle] = useState('');
+    // Form state initialized from problem prop
+    const [problemType, setProblemType] = useState(problem.type);
+    const [title, setTitle] = useState(problem.title);
     const [error, setError] = useState('');
-    const [disablePaste, setDisablePaste] = useState(false);
-    const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
+    const [disablePaste, setDisablePaste] = useState(problem.disablePaste || false);
+    const [selectedClassroomIds, setSelectedClassroomIds] = useState(problem.classroomIds || []);
+    const [isPending, startTransition] = useTransition();
 
     // Essay state
-    const [prompt, setPrompt] = useState('');
-    const [rawRubric, setRawRubric] = useState('');
-    const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
-    const [customMaxScore, setCustomMaxScore] = useState(10);
-    const [isRubricHidden, setIsRubricHidden] = useState(false);
+    const [prompt, setPrompt] = useState(problem.prompt || '');
+    const [rawRubric, setRawRubric] = useState(problem.rawRubric || '');
+    const [rubricItems, setRubricItems] = useState<RubricItem[]>(problem.rubricItems || []);
+    const [customMaxScore, setCustomMaxScore] = useState(problem.customMaxScore || 10);
+    const [isRubricHidden, setIsRubricHidden] = useState(problem.isRubricHidden || false);
     const [isParsingRubric, setIsParsingRubric] = useState(false);
 
     // Reading comprehension state
-    const [passage, setPassage] = useState('');
-    const [questions, setQuestions] = useState<Question[]>([]);
+    const [passage, setPassage] = useState(problem.passage || '');
+    const [questions, setQuestions] = useState<Question[]>(problem.questions || []);
 
-    const [isPending, startTransition] = useTransition();
-
-    useEffect(() => {
-        const foundProblem = problems.find(p => p.id === params.problemId);
-        if (foundProblem) {
-            setProblem(foundProblem);
-            setTitle(foundProblem.title);
-            setProblemType(foundProblem.type);
-            setDisablePaste(foundProblem.disablePaste || false);
-            setSelectedClassroomIds(foundProblem.classroomIds || []);
-
-            if (foundProblem.type === 'essay') {
-                setPrompt(foundProblem.prompt || '');
-                setRawRubric(foundProblem.rawRubric || '');
-                setRubricItems(foundProblem.rubricItems || []);
-                setCustomMaxScore(foundProblem.customMaxScore || 10);
-                setIsRubricHidden(foundProblem.isRubricHidden || false);
-            } else {
-                setPassage(foundProblem.passage || '');
-                setQuestions(foundProblem.questions || []);
-            }
-        }
-    }, [problems, params.problemId]);
 
     const teacherClassrooms = useMemo(() => 
         currentUser ? classrooms.filter(c => c.teacherId === currentUser.id) : [],
@@ -174,7 +149,6 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
     );
 
     const handleParseRubric = async () => {
-        // Same as create page
         if (!rawRubric.trim()) return;
         setIsParsingRubric(true);
         setError('');
@@ -189,7 +163,6 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
         }
     };
     
-    // Question handlers are identical to create page
     const handleAddQuestion = () => {
         const newQuestion: Question = { id: crypto.randomUUID(), questionText: '', questionType: 'multiple_choice', options: [{ id: crypto.randomUUID(), text: '' }], maxScore: 1 };
         setQuestions([...questions, newQuestion]);
@@ -205,7 +178,6 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!problem) return;
         setError('');
 
         const problemData: Partial<Problem> = {
@@ -242,21 +214,8 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
         );
     };
 
-
     const inputClass = "w-full p-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/50";
     const labelClass = "text-lg font-semibold text-foreground";
-
-    if (isDataLoading) {
-        return <div className="container mx-auto px-4 py-8 text-center">Đang tải dữ liệu...</div>;
-    }
-
-    if (!problem) {
-        // Let notFound handle it after data has loaded
-        if (!isDataLoading) {
-            notFound();
-        }
-        return null;
-    }
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -360,4 +319,21 @@ export default function EditProblemPage({ params }: { params: { problemId: strin
             </form>
         </div>
     );
+}
+
+export default function EditProblemPage({ params }: { params: { problemId: string } }) {
+    const { problems, isLoading: isDataLoading } = useDataContext();
+
+    const problem = problems.find(p => p.id === params.problemId);
+
+    if (isDataLoading) {
+        return <div className="container mx-auto px-4 py-8 text-center">Đang tải dữ liệu...</div>;
+    }
+
+    if (!problem) {
+        notFound();
+        return null;
+    }
+
+    return <EditProblemForm key={problem.id} problem={problem} />;
 }
