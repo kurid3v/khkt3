@@ -106,7 +106,8 @@ function CreateProblemForm() {
     setQuestions(questions.map(q => q.id === qId ? { ...q, gradingCriteria: text } : q));
   }
    const updateQuestionMaxScore = (qId: string, value: string) => {
-    const score = parseFloat(value);
+    const normalizedValue = value.replace(',', '.');
+    const score = parseFloat(normalizedValue);
     setQuestions(questions.map(q => q.id === qId ? { ...q, maxScore: isNaN(score) ? undefined : score } : q));
   };
   const addOption = (qId: string) => {
@@ -394,8 +395,8 @@ function CreateProblemForm() {
                                 onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
                                 className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
                                 placeholder="1"
-                                min="0.25"
-                                step="0.25"
+                                min="0"
+                                step="any"
                             />
                         </div>
                       </div>
@@ -419,8 +420,8 @@ function CreateProblemForm() {
                                 onChange={e => updateQuestionMaxScore(q.id, e.target.value)}
                                 className="w-20 p-1 border border-border rounded-md bg-card text-sm text-center"
                                 placeholder="1"
-                                min="0.25"
-                                step="0.25"
+                                min="0"
+                                step="any"
                             />
                         </div>
                     </div>
