@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useTransition, useOptimistic, useMemo } from 'react';
@@ -24,20 +23,8 @@ export default function DashboardPage() {
         (state, problemId: string) => state.filter(p => p.id !== problemId)
     );
 
-    if (isLoading) {
-        return (
-            <div className="container mx-auto px-4 py-8 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
-            </div>
-        );
-    }
-
-    if (!currentUser) {
-        return <p className="p-8">Vui lòng đăng nhập...</p>;
-    }
-
     const filteredProblems = useMemo(() => {
+        if (!currentUser) return [];
         if (currentUser.role === 'student') {
             const studentClassroomIds = classrooms
                 .filter(c => c.studentIds.includes(currentUser.id))
@@ -51,6 +38,19 @@ export default function DashboardPage() {
         return optimisticProblems;
     }, [optimisticProblems, currentUser, classrooms]);
 
+
+    if (isLoading) {
+        return (
+            <div className="container mx-auto px-4 py-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
+            </div>
+        );
+    }
+
+    if (!currentUser) {
+        return <p className="p-8">Vui lòng đăng nhập...</p>;
+    }
 
     const standaloneProblems = filteredProblems
         .filter(p => !p.examId)
