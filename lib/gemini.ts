@@ -118,12 +118,20 @@ const gradingSystemInstruction = `Bạn là một giáo viên dạy văn có kin
 Nhiệm vụ của bạn là đọc kỹ đề bài, bài làm và hướng dẫn chấm được cung cấp, sau đó đưa ra nhận xét chi tiết và cho điểm.
 
 - **Tuân thủ Hướng dẫn chấm**: Luôn tuân thủ nghiêm ngặt hướng dẫn chấm và biểu điểm được cung cấp. Phân tích bài làm dựa trên từng luận điểm, yêu cầu và thang điểm đã cho.
+- **Tham khảo ví dụ**: Nếu một bài làm mẫu và cách chấm điểm được cung cấp, hãy sử dụng nó như một tài liệu tham khảo chất lượng cao để đảm bảo sự nhất quán trong phong cách chấm điểm của bạn.
 - **Quy đổi điểm**: Sau khi chấm, hãy đảm bảo tổng điểm cuối cùng được quy đổi chính xác về thang điểm yêu cầu trong phần "QUAN TRỌNG" của đề bài.
 - **Phản hồi xây dựng**: Phản hồi của bạn phải mang tính xây dựng, giúp học sinh hiểu rõ điểm mạnh, điểm yếu và cách cải thiện bài viết.
 - **Định dạng JSON**: Luôn trả về kết quả dưới dạng JSON theo schema đã định sẵn. Không thêm bất kỳ văn bản giải thích nào bên ngoài đối tượng JSON.`;
 
 
-export async function gradeEssayOnServer(prompt: string, essay: string, rubric: RubricItem[], rawRubric: string, customMaxScore: string): Promise<Feedback> {
+export async function gradeEssayOnServer(
+    prompt: string, 
+    essay: string, 
+    rubric: RubricItem[], 
+    rawRubric: string, 
+    customMaxScore: string,
+    exampleSubmission?: { essay: string; feedback: Feedback }
+): Promise<Feedback> {
   const maxScoreNum = Number(customMaxScore) || 10;
   let rubricContent = '';
 
@@ -141,11 +149,32 @@ export async function gradeEssayOnServer(prompt: string, essay: string, rubric: 
     rubricContent = `Vui lòng chấm bài trên thang điểm ${maxScoreNum}.`;
   }
 
+  let exampleContent = '';
+  if (exampleSubmission) {
+      exampleContent = `
+      ---
+      BÀI LÀM MẪU VÀ KẾT QUẢ CHẤM THAM KHẢO
+      Đây là một ví dụ về một bài làm tốt đã được chấm điểm. Hãy tham khảo phong cách chấm và cho điểm này để đảm bảo tính nhất quán.
+
+      Bài làm mẫu:
+      """
+      ${exampleSubmission.essay}
+      """
+
+      Kết quả chấm mẫu:
+      ${JSON.stringify(exampleSubmission.feedback, null, 2)}
+      ---
+      `;
+  }
+
   const content = `
     ${prompt ? `Đề bài: """${prompt}"""` : ''}
     
     ${rubricContent}
 
+    ${exampleContent}
+
+    Bây giờ, hãy chấm "Bài làm" dưới đây:
     Bài làm: """${essay}"""
   `.trim();
 

@@ -1,5 +1,4 @@
 
-
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { 
@@ -9,6 +8,7 @@ import {
     imageToTextOnServer,
     checkSimilarityOnServer 
 } from '@/lib/gemini';
+import type { Submission } from '@/types';
 
 export async function POST(request: Request) {
   try {
@@ -18,13 +18,24 @@ export async function POST(request: Request) {
     if (action === 'grade') {
       const { problemId, prompt, essay, rubric, rawRubric, customMaxScore } = payload;
       
-      // Fetch existing essays for the same problem to perform a similarity check
-      const existingSubmissions = db.all.submissions.filter(s => s.problemId === problemId);
+      const existingSubmissions = db.all.submissions.filter(s => s.problemId === problemId && s.essay);
       const existingEssays = existingSubmissions.map(s => s.essay).filter(Boolean) as string[];
+
+      // Find the best submission to use as a few-shot example.
+      // This assumes that the highest-scored submission is a good example,
+      // likely one that has been reviewed or corrected by a teacher.
+      let bestExample: Submission | null = null;
+      if (existingSubmissions.length > 0) {
+          bestExample = existingSubmissions.reduce((prev, current) => 
+              (prev.feedback.totalScore > current.feedback.totalScore) ? prev : current
+          );
+      }
+
+      const examplePayload = bestExample ? { essay: bestExample.essay!, feedback: bestExample.feedback } : undefined;
 
       // Run grading and similarity check in parallel for efficiency
       const [feedback, similarityCheck] = await Promise.all([
-        gradeEssayOnServer(prompt, essay, rubric, rawRubric, customMaxScore),
+        gradeEssayOnServer(prompt, essay, rubric, rawRubric, customMaxScore, examplePayload),
         checkSimilarityOnServer(essay, existingEssays)
       ]);
       
