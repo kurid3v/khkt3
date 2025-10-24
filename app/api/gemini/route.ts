@@ -21,11 +21,20 @@ export async function POST(request: Request) {
       const existingSubmissions = db.all.submissions.filter(s => s.problemId === problemId && s.essay);
       const existingEssays = existingSubmissions.map(s => s.essay).filter(Boolean) as string[];
 
-      // Find the best submission to use as a few-shot example.
-      // This assumes that the highest-scored submission is a good example,
-      // likely one that has been reviewed or corrected by a teacher.
+      // New logic to find the best example:
+      // Prioritize the most recently teacher-edited submission.
+      // Fallback to the highest-scored submission if none have been edited.
       let bestExample: Submission | null = null;
-      if (existingSubmissions.length > 0) {
+      const teacherEditedSubmissions = existingSubmissions.filter(s => s.lastEditedByTeacherAt);
+
+      if (teacherEditedSubmissions.length > 0) {
+          // If there are teacher-edited submissions, pick the most recently edited one.
+          bestExample = teacherEditedSubmissions.reduce((prev, current) => 
+              (prev.lastEditedByTeacherAt! > current.lastEditedByTeacherAt!) ? prev : current
+          );
+      } else if (existingSubmissions.length > 0) {
+          // As a fallback, if no submissions have been edited by a teacher,
+          // use the one with the highest score.
           bestExample = existingSubmissions.reduce((prev, current) => 
               (prev.feedback.totalScore > current.feedback.totalScore) ? prev : current
           );

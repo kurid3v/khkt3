@@ -59,7 +59,10 @@ const EssayResult: React.FC<{
 
     const handleSave = () => {
         startTransition(async () => {
-            await onUpdateSubmission(submission.id, { feedback: editedFeedback });
+            await onUpdateSubmission(submission.id, { 
+                feedback: editedFeedback,
+                lastEditedByTeacherAt: Date.now()
+            });
             setIsEditing(false);
         });
     };
@@ -202,7 +205,10 @@ const ReadingComprehensionResult: React.FC<{
                 maxScore: newMaxScore,
             };
 
-            await onUpdateSubmission(submission.id, { feedback: updatedFeedback });
+            await onUpdateSubmission(submission.id, { 
+                feedback: updatedFeedback,
+                lastEditedByTeacherAt: Date.now() 
+            });
             setIsEditing(false);
         });
     };

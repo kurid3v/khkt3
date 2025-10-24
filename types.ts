@@ -73,6 +73,7 @@ export interface Submission {
   feedback: Feedback;
   submittedAt: number;
   examId?: string; // ID of the exam this submission belongs to
+  lastEditedByTeacherAt?: number; // Timestamp for when a teacher last edited this
   
   // Fields for different submission types
   essay?: string; // For 'essay' type
