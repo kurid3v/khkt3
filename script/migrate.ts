@@ -60,7 +60,9 @@ async function main() {
 main()
   .catch((e) => {
     console.error('Đã xảy ra lỗi trong quá trình di dời dữ liệu:', e);
-    process.exit(1);
+    // FIX: Re-throwing the error will cause the process to exit with a non-zero status code
+    // due to the unhandled promise rejection, which is the desired behavior and fixes the type error.
+    throw e;
   })
   .finally(async () => {
     // Đóng kết nối Prisma

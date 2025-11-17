@@ -11,7 +11,8 @@ import examAttemptsData from '@/data/examAttempts.json';
 import classroomsData from '@/data/classrooms.json';
 
 // Define file paths for writing data
-// FIX: Removed explicit 'process' import to rely on the global Node.js process object, fixing a type error where 'cwd' was not found.
+// FIX: The global `process` object is not correctly typed. Importing it explicitly from the 'process' module provides the correct Node.js types and resolves the error.
+import process from 'process';
 const dataDir = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataDir, 'users.json');
 const problemsPath = path.join(dataDir, 'problems.json');

@@ -32,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
   const roleText = roleTextMap[user.role] || 'Không xác định';
   
   const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
-    const isActive = pathname.startsWith(href);
+    const isActive = pathname?.startsWith(href);
     return (
         <Link href={href} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
             isActive 
