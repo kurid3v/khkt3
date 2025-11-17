@@ -11,7 +11,7 @@ import examAttemptsData from '@/data/examAttempts.json';
 import classroomsData from '@/data/classrooms.json';
 
 // Define file paths for writing data
-// FIX: The global `process` object is not correctly typed. Importing it explicitly from the 'process' module provides the correct Node.js types and resolves the error.
+// Fix: The global `process` object is not correctly typed. Importing it explicitly from the 'process' module provides the correct Node.js types and resolves the error.
 import process from 'process';
 const dataDir = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataDir, 'users.json');

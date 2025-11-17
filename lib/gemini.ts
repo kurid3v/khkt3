@@ -408,7 +408,7 @@ export async function imageToTextOnServer(base64Image: string): Promise<string> 
         contents: { parts: [imagePart, textPart] },
     });
     
-    return response.text;
+    return response.text ?? '';
 }
 
 
