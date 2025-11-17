@@ -1,4 +1,3 @@
-
 // FIX: Changed import to fix module resolution error for PrismaClient.
 import PrismaClient from '@prisma/client';
 import users from '../data/users.json';
@@ -6,7 +5,6 @@ import problems from '../data/problems.json';
 // Import các file json khác nếu bạn muốn di dời dữ liệu của chúng
 import classrooms from '../data/classrooms.json';
 import exams from '../data/exams.json';
-// FIX: Import 'process' to provide correct types for a standalone Node.js script.
 import process from 'process';
 
 const prisma = new PrismaClient();
