@@ -1,6 +1,5 @@
 // FIX: Changed import to fix module resolution error for PrismaClient.
-import pkg from '@prisma/client';
-const { PrismaClient } = pkg;
+import { PrismaClient } from '@prisma/client';
 import users from '../data/users.json';
 import problems from '../data/problems.json';
 // Import các file json khác nếu bạn muốn di dời dữ liệu của chúng
