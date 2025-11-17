@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate-data": "ts-node scripts/migrate.ts"
+    "db:migrate-data": "ts-node script/migrate.ts"
   },
   "dependencies": {
     "@google/genai": "^1.21.0",

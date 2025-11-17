@@ -123,7 +123,7 @@ const QuestionEditor: React.FC<{
 export default function CreateProblemPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const examId = searchParams.get('examId');
+    const examId = searchParams?.get('examId');
     const { currentUser, classrooms } = useDataContext();
 
     const [problemType, setProblemType] = useState<'essay' | 'reading_comprehension'>('essay');
