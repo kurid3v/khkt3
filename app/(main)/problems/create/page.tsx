@@ -1,3 +1,4 @@
+
 // FIX: Create the page component for creating new problems.
 'use client';
 
@@ -124,7 +125,7 @@ export default function CreateProblemPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const examId = searchParams?.get('examId');
-    const { currentUser, classrooms } = useDataContext();
+    const { currentUser, classrooms, refetchData } = useDataContext();
 
     const [problemType, setProblemType] = useState<'essay' | 'reading_comprehension'>('essay');
     const [title, setTitle] = useState('');
@@ -214,6 +215,7 @@ export default function CreateProblemPage() {
         startTransition(async () => {
             try {
                 await createProblem(problemData);
+                await refetchData();
                 const backPath = examId ? `/exams/${examId}` : '/dashboard';
                 router.push(backPath);
             } catch (err) {

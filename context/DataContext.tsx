@@ -45,7 +45,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/bootstrap');
+            const response = await fetch('/api/bootstrap', { cache: 'no-store' });
             if (!response.ok) throw new Error('Failed to bootstrap data');
             const data = await response.json();
             setUsers(data.users);

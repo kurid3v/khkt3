@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition, useOptimistic, useMemo } from 'react';
@@ -12,7 +13,7 @@ import { deleteProblem } from '@/app/actions';
 import UsersIcon from '@/components/icons/UsersIcon';
 
 export default function DashboardPage() {
-    const { problems, submissions, users, currentUser, classrooms, isLoading } = useDataContext();
+    const { problems, submissions, users, currentUser, classrooms, isLoading, refetchData } = useDataContext();
     const router = useRouter();
 
     const [problemToDelete, setProblemToDelete] = useState<Problem | null>(null);
@@ -66,6 +67,7 @@ export default function DashboardPage() {
             startTransition(async () => {
                 setOptimisticProblems(problemToDelete.id);
                 await deleteProblem(problemToDelete.id);
+                await refetchData();
             });
             setProblemToDelete(null);
         }
