@@ -1,9 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+// FIX: Changed import to fix module resolution error for PrismaClient.
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 import users from '../data/users.json';
 import problems from '../data/problems.json';
 // Import các file json khác nếu bạn muốn di dời dữ liệu của chúng
-// import classrooms from '../data/classrooms.json';
-// import exams from '../data/exams.json';
+import classrooms from '../data/classrooms.json';
+import exams from '../data/exams.json';
 // FIX: Import 'process' to provide correct types for a standalone Node.js script.
 import process from 'process';
 
@@ -39,6 +41,7 @@ async function main() {
     // Prisma yêu cầu các trường JSON phải là JsonValue (không phải undefined)
     rubricItems: p.rubricItems ?? [],
     questions: p.questions ?? [],
+    classroomIds: p.classroomIds ?? [],
     // Đảm bảo các trường tùy chọn khác là null thay vì undefined
     prompt: p.prompt ?? null,
     rawRubric: p.rawRubric ?? null,
@@ -53,6 +56,36 @@ async function main() {
     skipDuplicates: true,
   });
   console.log(`Đã di dời ${problems.length} bài tập.`);
+
+  // Di dời Classrooms
+  if (classrooms && classrooms.length > 0) {
+    console.log('Đang di dời Classrooms...');
+    await prisma.classroom.createMany({
+        data: classrooms.map(c => ({
+            ...c,
+            studentIds: c.studentIds ?? [],
+        })),
+        skipDuplicates: true,
+    });
+    console.log(`Đã di dời ${classrooms.length} lớp học.`);
+  }
+
+  // Di dời Exams
+  if (exams && exams.length > 0) {
+    console.log('Đang di dời Exams...');
+    await prisma.exam.createMany({
+        data: exams.map(e => ({
+            ...e,
+            createdAt: new Date(e.createdAt),
+            startTime: new Date(e.startTime),
+            endTime: new Date(e.endTime),
+            classroomIds: e.classroomIds ?? [],
+            password: e.password ?? null,
+        })),
+        skipDuplicates: true,
+    });
+    console.log(`Đã di dời ${exams.length} đề thi.`);
+  }
 
   console.log('Di dời dữ liệu hoàn tất.');
 }

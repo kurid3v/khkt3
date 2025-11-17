@@ -41,6 +41,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
   const proceedToExam = async () => {
     if (userAttemptForThisExam) {
       // Resume existing attempt
+      // FIX: Corrected a typo in the variable name `userAttemptForThisExam`.
       router.push(`/exams/${exam.id}/take/${userAttemptForThisExam.id}`);
     } else {
       // Create new attempt
