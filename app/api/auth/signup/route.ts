@@ -13,12 +13,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
     
-    const existingUser = db.users.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
+    const existingUser = await db.users.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
     if (existingUser) {
         return NextResponse.json({ message: 'Tên đăng nhập này đã tồn tại.' }, { status: 409 });
     }
 
-    const newUser = db.users.create({ username: trimmedUsername, displayName: trimmedDisplayName, role, password, avatar });
+    const newUser = await db.users.create({ username: trimmedUsername, displayName: trimmedDisplayName, role, password, avatar });
     const { password: _, ...userWithoutPassword } = newUser;
 
     return NextResponse.json({ user: userWithoutPassword }, { status: 201 });

@@ -1,217 +1,178 @@
 
+import { PrismaClient } from '@prisma/client';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
-import fs from 'fs';
-import path from 'path';
-// Fix: The global `process` object is not correctly typed. Importing it explicitly from the 'process' module provides the correct Node.js types and resolves the error.
-import process from 'process';
 
-// Import static data directly instead of reading from file system at runtime
-import usersData from '@/data/users.json';
-import problemsData from '@/data/problems.json';
-import submissionsData from '@/data/submissions.json';
-import examsData from '@/data/exams.json';
-import examAttemptsData from '@/data/examAttempts.json';
-import classroomsData from '@/data/classrooms.json';
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+//
+// Learn more: https://pris.ly/d/help/next-js-best-practices
 
-// Define file paths for writing data
-const dataDir = path.join(process.cwd(), 'data');
-const usersPath = path.join(dataDir, 'users.json');
-const problemsPath = path.join(dataDir, 'problems.json');
-const submissionsPath = path.join(dataDir, 'submissions.json');
-const examsPath = path.join(dataDir, 'exams.json');
-const examAttemptsPath = path.join(dataDir, 'examAttempts.json');
-const classroomsPath = path.join(dataDir, 'classrooms.json');
+declare global {
+  var prisma: PrismaClient | undefined;
+}
+
+// FIX: Replaced 'global' with 'globalThis' for broader environment compatibility and to resolve type errors.
+const prisma = globalThis.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  // FIX: Replaced 'global' with 'globalThis' for broader environment compatibility and to resolve type errors.
+  globalThis.prisma = prisma;
+}
 
 
-// Helper to write JSON file for persistence
-const writeData = (filePath: string, data: any) => {
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (error) {
-        console.error(`Error writing data to ${filePath}:`, error);
-    }
-};
-
-
-// In-memory data store, initialized by importing JSON files.
-const store = {
-    users: usersData as User[],
-    problems: problemsData as Problem[],
-    submissions: submissionsData as Submission[],
-    exams: examsData as Exam[],
-    examAttempts: examAttemptsData as ExamAttempt[],
-    classrooms: classroomsData as Classroom[],
-};
-
-// Data access layer that now persists changes to JSON files.
+// New data access layer using Prisma
 export const db = {
     get all() {
-        return store;
+        return {
+            users: prisma.user.findMany(),
+            problems: prisma.problem.findMany(),
+            submissions: prisma.submission.findMany(),
+            exams: prisma.exam.findMany(),
+            examAttempts: prisma.examAttempt.findMany(),
+            classrooms: prisma.classroom.findMany(),
+        };
     },
     users: {
-        find: (predicate: (user: User) => boolean) => store.users.find(predicate),
-        some: (predicate: (user: User) => boolean) => store.users.some(predicate),
+        find: (predicate: (user: User) => boolean) => {
+            // This is inefficient and should be replaced by specific queries
+            // For now, it mimics the old behavior
+            return prisma.user.findMany().then(users => users.find(predicate));
+        },
+        some: (predicate: (user: User) => boolean) => {
+            return prisma.user.findMany().then(users => users.some(predicate));
+        },
         create: (data: Omit<User, 'id'>) => {
-            const newUser: User = { ...data, id: crypto.randomUUID(), avatar: data.avatar || undefined };
-            store.users.push(newUser);
-            writeData(usersPath, store.users); // Persist
-            return newUser;
+            return prisma.user.create({ data: { ...data, id: crypto.randomUUID() } });
         },
         update: (id: string, data: Partial<User>) => {
-            const userIndex = store.users.findIndex(u => u.id === id);
-            if (userIndex === -1) return null;
-            const updatedUser = { ...store.users[userIndex], ...data };
-            store.users[userIndex] = updatedUser;
-            writeData(usersPath, store.users); // Persist
-            return updatedUser;
+            return prisma.user.update({ where: { id }, data });
         },
-        delete: (id: string) => {
-            const userIndex = store.users.findIndex(u => u.id === id);
-            if (userIndex === -1) return false;
+        delete: async (id: string) => {
+            const adminUser = await prisma.user.findFirst({ where: { role: 'admin' }});
+            if (!adminUser) throw new Error("Admin user not found for content reassignment.");
+            if (id === adminUser.id) throw new Error("Cannot delete the primary admin user.");
 
-            const adminUser = store.users.find(u => u.username === 'adminuser');
-            if (!adminUser) {
-                console.error("Critical error: Admin user not found. Cannot reassign content.");
-                return false;
-            }
-            if (id === adminUser.id) {
-                console.error("Cannot delete the primary admin user.");
-                return false;
-            }
-            
-            // Reassign created content to admin
-            store.problems = store.problems.map(p => p.createdBy === id ? { ...p, createdBy: adminUser.id } : p);
-            store.exams = store.exams.map(e => e.createdBy === id ? { ...e, createdBy: adminUser.id } : e);
-            
-            // Remove user-specific data
-            store.submissions = store.submissions.filter(s => s.submitterId !== id);
-            store.examAttempts = store.examAttempts.filter(a => a.studentId !== id);
-            store.classrooms = store.classrooms.map(c => ({
-                ...c,
-                studentIds: c.studentIds.filter(studentId => studentId !== id)
-            })).filter(c => c.teacherId !== id); // Delete classes created by this user
+            return prisma.$transaction(async (tx) => {
+                // Reassign content
+                await tx.problem.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
+                await tx.exam.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
+                
+                // Delete user-specific data
+                await tx.submission.deleteMany({ where: { submitterId: id } });
+                await tx.examAttempt.deleteMany({ where: { studentId: id } });
+                await tx.classroom.deleteMany({ where: { teacherId: id } });
 
-            // Remove user
-            store.users.splice(userIndex, 1);
-
-            // Persist all changes
-            writeData(usersPath, store.users);
-            writeData(problemsPath, store.problems);
-            writeData(examsPath, store.exams);
-            writeData(submissionsPath, store.submissions);
-            writeData(examAttemptsPath, store.examAttempts);
-            writeData(classroomsPath, store.classrooms);
-
-            return true;
+                // Remove user from any classes they are a student in
+                const classroomsAsStudent = await tx.classroom.findMany({ where: { studentIds: { has: id } } });
+                for(const classroom of classroomsAsStudent) {
+                    await tx.classroom.update({
+                        where: { id: classroom.id },
+                        data: { studentIds: { set: classroom.studentIds.filter(sid => sid !== id) } }
+                    });
+                }
+                
+                // Finally, delete the user
+                await tx.user.delete({ where: { id } });
+                return true;
+            });
         }
     },
     problems: {
         create: (data: Omit<Problem, 'id' | 'createdAt'>) => {
-            const newProblem: Problem = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
-            store.problems.push(newProblem);
-            writeData(problemsPath, store.problems); // Persist
-            return newProblem;
+            return prisma.problem.create({
+                data: {
+                    ...data,
+                    id: crypto.randomUUID(),
+                    createdAt: new Date(),
+                    rubricItems: data.rubricItems ?? undefined,
+                    questions: data.questions ?? undefined,
+                    classroomIds: data.classroomIds ?? [],
+                }
+            });
         },
         update: (id: string, data: Partial<Problem>) => {
-             const problemIndex = store.problems.findIndex(p => p.id === id);
-            if (problemIndex === -1) return null;
-            const updatedProblem = { ...store.problems[problemIndex], ...data };
-            store.problems[problemIndex] = updatedProblem;
-            writeData(problemsPath, store.problems); // Persist
-            return updatedProblem;
+             return prisma.problem.update({ 
+                 where: { id }, 
+                 data: {
+                     ...data,
+                     rubricItems: data.rubricItems ?? undefined,
+                     questions: data.questions ?? undefined,
+                 }
+            });
         },
         delete: (id: string) => {
-            const initialProblemsLength = store.problems.length;
-            const problemExists = store.problems.some(p => p.id === id);
-            if (!problemExists) return false;
-            
-            store.problems = store.problems.filter(p => p.id !== id);
-            store.submissions = store.submissions.filter(s => s.problemId !== id);
-
-            writeData(problemsPath, store.problems);
-            writeData(submissionsPath, store.submissions);
-
-            return store.problems.length < initialProblemsLength;
+            return prisma.problem.delete({ where: { id } });
         }
     },
     submissions: {
          create: (data: Omit<Submission, 'id' | 'submittedAt'>) => {
-            const newSubmission: Submission = { ...data, id: crypto.randomUUID(), submittedAt: Date.now() };
-            store.submissions.push(newSubmission);
-            writeData(submissionsPath, store.submissions); // Persist
-            return newSubmission;
+            return prisma.submission.create({ 
+                data: { 
+                    ...data,
+                    id: crypto.randomUUID(),
+                    submittedAt: new Date(),
+                    feedback: data.feedback,
+                    answers: data.answers ?? undefined,
+                    similarityCheck: data.similarityCheck ?? undefined,
+                } 
+            });
         },
         update: (id: string, data: Partial<Submission>) => {
-            const subIndex = store.submissions.findIndex(s => s.id === id);
-            if (subIndex === -1) return null;
-            const updatedSubmission = { ...store.submissions[subIndex], ...data };
-            store.submissions[subIndex] = updatedSubmission;
-            writeData(submissionsPath, store.submissions); // Persist
-            return updatedSubmission;
+            return prisma.submission.update({ 
+                where: { id }, 
+                data: {
+                    ...data,
+                    feedback: data.feedback ?? undefined,
+                    answers: data.answers ?? undefined,
+                    similarityCheck: data.similarityCheck ?? undefined,
+                }
+            });
         },
     },
     exams: {
          create: (data: Omit<Exam, 'id' | 'createdAt'>) => {
-            const newExam: Exam = { ...data, id: crypto.randomUUID(), createdAt: Date.now() };
-            store.exams.push(newExam);
-            writeData(examsPath, store.exams); // Persist
-            return newExam;
+            return prisma.exam.create({ 
+                data: { 
+                    ...data,
+                    id: crypto.randomUUID(),
+                    createdAt: new Date(),
+                    startTime: new Date(data.startTime),
+                    endTime: new Date(data.endTime),
+                    classroomIds: data.classroomIds ?? [],
+                }
+            });
         },
         delete: (id: string) => {
-            const initialLength = store.exams.length;
-            const examExists = store.exams.some(e => e.id === id);
-            if (!examExists) return false;
-        
-            // Find problems associated with the exam
-            const problemsToDelete = store.problems.filter(p => p.examId === id);
-            const problemIdsToDelete = problemsToDelete.map(p => p.id);
-        
-            // Delete submissions associated with those problems
-            store.submissions = store.submissions.filter(s => !problemIdsToDelete.includes(s.problemId));
-        
-            // Delete exam attempts for this exam
-            store.examAttempts = store.examAttempts.filter(att => att.examId !== id);
-        
-            // Delete the problems
-            store.problems = store.problems.filter(p => p.examId !== id);
-        
-            // Delete the exam
-            store.exams = store.exams.filter(e => e.id !== id);
-        
-            // Persist all changes
-            writeData(examsPath, store.exams);
-            writeData(problemsPath, store.problems);
-            writeData(submissionsPath, store.submissions);
-            writeData(examAttemptsPath, store.examAttempts);
-        
-            return store.exams.length < initialLength;
+            return prisma.exam.delete({ where: { id } });
         }
     },
     examAttempts: {
         create: (data: Omit<ExamAttempt, 'id' | 'startedAt' | 'fullscreenExits' | 'visibilityStateChanges' | 'submissionIds'>) => {
-            const newAttempt: ExamAttempt = { 
-                ...data, 
-                id: crypto.randomUUID(), 
-                startedAt: Date.now(),
-                fullscreenExits: [],
-                visibilityStateChanges: [],
-                submissionIds: [],
-            };
-            store.examAttempts.push(newAttempt);
-            writeData(examAttemptsPath, store.examAttempts); // Persist
-            return newAttempt;
+            return prisma.examAttempt.create({
+                data: {
+                    ...data,
+                    id: crypto.randomUUID(),
+                    startedAt: new Date(),
+                    fullscreenExits: [],
+                    visibilityStateChanges: [],
+                    submissionIds: [],
+                }
+            });
         },
         update: (id: string, data: Partial<ExamAttempt>) => {
-             const attemptIndex = store.examAttempts.findIndex(a => a.id === id);
-            if (attemptIndex === -1) return null;
-            const updatedAttempt = { ...store.examAttempts[attemptIndex], ...data };
-            store.examAttempts[attemptIndex] = updatedAttempt;
-            writeData(examAttemptsPath, store.examAttempts); // Persist
-            return updatedAttempt;
+             return prisma.examAttempt.update({ 
+                where: { id }, 
+                data: {
+                    ...data,
+                    visibilityStateChanges: data.visibilityStateChanges ?? undefined,
+                }
+            });
         },
     },
     classrooms: {
-        find: (predicate: (classroom: Classroom) => boolean) => store.classrooms.find(predicate),
+        find: (predicate: (classroom: Classroom) => boolean) => {
+            return prisma.classroom.findMany().then(classrooms => classrooms.find(predicate));
+        },
         create: (data: Omit<Classroom, 'id' | 'studentIds' | 'joinCode'>) => {
             const generateJoinCode = () => {
                 const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -221,40 +182,39 @@ export const db = {
                 }
                 return code;
             };
-            const newClassroom: Classroom = { 
-                ...data, 
-                id: crypto.randomUUID(), 
-                studentIds: [],
-                joinCode: generateJoinCode()
-            };
-            store.classrooms.push(newClassroom);
-            writeData(classroomsPath, store.classrooms);
-            return newClassroom;
+            return prisma.classroom.create({
+                data: {
+                    ...data,
+                    id: crypto.randomUUID(),
+                    studentIds: [],
+                    joinCode: generateJoinCode(),
+                }
+            });
         },
         update: (id: string, data: Partial<Classroom>) => {
-            const classIndex = store.classrooms.findIndex(c => c.id === id);
-            if (classIndex === -1) return null;
-            const updatedClassroom = { ...store.classrooms[classIndex], ...data };
-            store.classrooms[classIndex] = updatedClassroom;
-            writeData(classroomsPath, store.classrooms);
-            return updatedClassroom;
+            return prisma.classroom.update({ where: { id }, data });
         },
         delete: (id: string) => {
-            const initialLength = store.classrooms.length;
-            store.classrooms = store.classrooms.filter(c => c.id !== id);
-            // Also remove this classroom from any assignments
-            store.problems = store.problems.map(p => ({
-                ...p,
-                classroomIds: p.classroomIds?.filter(cid => cid !== id)
-            }));
-            store.exams = store.exams.map(e => ({
-                ...e,
-                classroomIds: e.classroomIds?.filter(cid => cid !== id)
-            }));
-            writeData(classroomsPath, store.classrooms);
-            writeData(problemsPath, store.problems);
-            writeData(examsPath, store.exams);
-            return store.classrooms.length < initialLength;
+            return prisma.$transaction(async (tx) => {
+                // Unassign classroom from problems and exams
+                const problemsToUpdate = await tx.problem.findMany({ where: { classroomIds: { has: id } } });
+                for (const problem of problemsToUpdate) {
+                    await tx.problem.update({
+                        where: { id: problem.id },
+                        data: { classroomIds: { set: problem.classroomIds.filter(cid => cid !== id) } }
+                    });
+                }
+                const examsToUpdate = await tx.exam.findMany({ where: { classroomIds: { has: id } } });
+                for (const exam of examsToUpdate) {
+                    await tx.exam.update({
+                        where: { id: exam.id },
+                        data: { classroomIds: { set: exam.classroomIds.filter(cid => cid !== id) } }
+                    });
+                }
+                // Delete classroom
+                await tx.classroom.delete({ where: { id } });
+                return true;
+            });
         }
     }
 };

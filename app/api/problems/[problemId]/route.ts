@@ -10,7 +10,7 @@ export async function PUT(
         const { problemId } = params;
         const values = await req.json();
 
-        const updatedProblem = db.problems.update(problemId, values);
+        const updatedProblem = await db.problems.update(problemId, values);
         
         if (!updatedProblem) {
             return new NextResponse("Problem not found", { status: 404 });

@@ -8,7 +8,7 @@ export async function DELETE(
 ) {
     try {
         const { examId } = params;
-        const success = db.exams.delete(examId);
+        const success = await db.exams.delete(examId);
         
         if (!success) {
             return new NextResponse("Exam not found", { status: 404 });

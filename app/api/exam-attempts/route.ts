@@ -11,7 +11,7 @@ export async function POST(req: Request) {
              return new NextResponse('Missing required fields', { status: 400 });
         }
 
-        const newAttempt = db.examAttempts.create({ examId, studentId });
+        const newAttempt = await db.examAttempts.create({ examId, studentId });
 
         return NextResponse.json(newAttempt, { status: 201 });
     } catch (error) {

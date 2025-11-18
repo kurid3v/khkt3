@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         
-        const newSubmission = db.submissions.create(body);
+        const newSubmission = await db.submissions.create(body);
 
         return NextResponse.json(newSubmission, { status: 201 });
     } catch (error) {

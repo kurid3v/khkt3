@@ -34,7 +34,7 @@ export async function updateUser(userId: string, formData: FormData) {
             updateData.password = password;
         }
 
-        db.users.update(userId, updateData);
+        await db.users.update(userId, updateData);
 
         revalidatePath('/admin');
         revalidatePath('/profile');
@@ -48,7 +48,7 @@ export async function updateUser(userId: string, formData: FormData) {
 
 export async function deleteUser(userId: string) {
     try {
-        db.users.delete(userId);
+        await db.users.delete(userId);
         revalidatePath('/admin');
     } catch (error) {
         console.error("Failed to delete user:", error);
@@ -77,7 +77,8 @@ export async function createProblem(data: {
   disablePaste?: boolean;
 }) {
   try {
-    const existingProblem = db.all.problems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase() && !p.examId);
+    const allProblems = await db.all.problems;
+    const existingProblem = allProblems.find(p => p.title.trim().toLowerCase() === data.title.trim().toLowerCase() && !p.examId);
     if (existingProblem) {
       throw new Error("Tên bài tập đã tồn tại. Vui lòng chọn một tên khác.");
     }
@@ -104,7 +105,7 @@ export async function createProblem(data: {
         })
     };
 
-    db.problems.create(problemData);
+    await db.problems.create(problemData);
     revalidatePath('/dashboard');
     if (data.examId) {
       revalidatePath(`/exams/${data.examId}`);
@@ -135,7 +136,7 @@ export async function updateProblem(problemId: string, data: Partial<Problem>) {
       problemData.customMaxScore = problemData.questions.reduce((acc, q) => acc + (q.maxScore || 1), 0) || 0;
     }
     
-    db.problems.update(problemId, problemData);
+    await db.problems.update(problemId, problemData);
     
     revalidatePath('/dashboard');
     if (problemData.examId) {
@@ -152,7 +153,7 @@ export async function updateProblem(problemId: string, data: Partial<Problem>) {
 
 export async function deleteProblem(problemId: string) {
   try {
-    db.problems.delete(problemId);
+    await db.problems.delete(problemId);
     revalidatePath('/dashboard');
     revalidatePath('/admin');
     revalidatePath('/submissions/all');
@@ -174,7 +175,7 @@ export async function createExam(data: {
   createdBy: string;
 }) {
     try {
-        const newExam = db.exams.create(data);
+        const newExam = await db.exams.create(data);
         revalidatePath('/exams');
         return newExam;
     } catch (error) {
@@ -185,7 +186,7 @@ export async function createExam(data: {
 
 export async function removeExam(examId: string) {
   try {
-    db.exams.delete(examId);
+    await db.exams.delete(examId);
     revalidatePath('/exams');
     revalidatePath('/admin');
     revalidatePath('/dashboard');
@@ -199,7 +200,7 @@ export async function removeExam(examId: string) {
 // --- Submissions ---
 export async function addSubmission(submissionData: Omit<Submission, 'id' | 'submittedAt'>) {
     try {
-        const newSubmission = db.submissions.create(submissionData);
+        const newSubmission = await db.submissions.create(submissionData);
         revalidatePath(`/problems/${submissionData.problemId}`);
         if(submissionData.examId) {
             revalidatePath(`/exams/${submissionData.examId}`);
@@ -214,12 +215,12 @@ export async function addSubmission(submissionData: Omit<Submission, 'id' | 'sub
 // --- Classrooms ---
 export async function createClassroom(name: string, teacherId: string) {
     if (!name.trim()) throw new Error("Tên lớp không được để trống.");
-    db.classrooms.create({ name, teacherId });
+    await db.classrooms.create({ name, teacherId });
     revalidatePath('/classrooms');
 }
 
 export async function deleteClassroom(classroomId: string) {
-    db.classrooms.delete(classroomId);
+    await db.classrooms.delete(classroomId);
     revalidatePath('/classrooms');
 }
 
@@ -227,7 +228,7 @@ export async function joinClassroom(joinCode: string, studentId: string) {
     const code = joinCode.trim().toUpperCase();
     if (!code) throw new Error("Mã tham gia không hợp lệ.");
 
-    const classroom = db.classrooms.find(c => c.joinCode === code);
+    const classroom = await db.classrooms.find(c => c.joinCode === code);
     if (!classroom) throw new Error("Không tìm thấy lớp học với mã này.");
 
     if (classroom.studentIds.includes(studentId)) {
@@ -235,25 +236,25 @@ export async function joinClassroom(joinCode: string, studentId: string) {
     }
 
     const updatedStudentIds = [...classroom.studentIds, studentId];
-    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    await db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
     revalidatePath('/classrooms');
 }
 
 export async function leaveClassroom(classroomId: string, studentId: string) {
-    const classroom = db.classrooms.find(c => c.id === classroomId);
+    const classroom = await db.classrooms.find(c => c.id === classroomId);
     if (!classroom) throw new Error("Không tìm thấy lớp học.");
 
     const updatedStudentIds = classroom.studentIds.filter(id => id !== studentId);
-    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    await db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
     revalidatePath('/classrooms');
 }
 
 export async function removeStudentFromClass(classroomId: string, studentId: string) {
-    const classroom = db.classrooms.find(c => c.id === classroomId);
+    const classroom = await db.classrooms.find(c => c.id === classroomId);
     if (!classroom) throw new Error("Không tìm thấy lớp học.");
 
     const updatedStudentIds = classroom.studentIds.filter(id => id !== studentId);
-    db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    await db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
     revalidatePath(`/classrooms`);
     revalidatePath(`/classrooms/${classroomId}`);
 }

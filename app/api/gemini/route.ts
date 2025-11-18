@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     if (action === 'grade') {
       const { problemId, prompt, essay, rubric, rawRubric, customMaxScore } = payload;
       
-      const existingSubmissions = db.all.submissions.filter(s => s.problemId === problemId && s.essay);
+      const allSubmissions = await db.all.submissions;
+      const existingSubmissions = allSubmissions.filter(s => s.problemId === problemId && s.essay);
       const existingEssays = existingSubmissions.map(s => s.essay).filter(Boolean) as string[];
 
       // New logic to find the best example:
@@ -30,17 +31,17 @@ export async function POST(request: Request) {
       if (teacherEditedSubmissions.length > 0) {
           // If there are teacher-edited submissions, pick the most recently edited one.
           bestExample = teacherEditedSubmissions.reduce((prev, current) => 
-              (prev.lastEditedByTeacherAt! > current.lastEditedByTeacherAt!) ? prev : current
+              (new Date(prev.lastEditedByTeacherAt!) > new Date(current.lastEditedByTeacherAt!)) ? prev : current
           );
       } else if (existingSubmissions.length > 0) {
           // As a fallback, if no submissions have been edited by a teacher,
           // use the one with the highest score.
           bestExample = existingSubmissions.reduce((prev, current) => 
-              (prev.feedback.totalScore > current.feedback.totalScore) ? prev : current
+              ( (prev.feedback as any).totalScore > (current.feedback as any).totalScore) ? prev : current
           );
       }
 
-      const examplePayload = bestExample ? { essay: bestExample.essay!, feedback: bestExample.feedback } : undefined;
+      const examplePayload = bestExample ? { essay: bestExample.essay!, feedback: bestExample.feedback as any } : undefined;
 
       // Run grading and similarity check in parallel for efficiency
       const [feedback, similarityCheck] = await Promise.all([

@@ -12,14 +12,16 @@ export async function PUT(
 
         // When finishing, we also need to add the submissions to the database
         if (values.newSubmissions && Array.isArray(values.newSubmissions)) {
-            values.newSubmissions.forEach((sub: any) => {
-                db.submissions.create(sub);
-            });
+            for (const sub of values.newSubmissions) {
+                // Attach the attemptId to the submission
+                const submissionData = { ...sub, examAttemptId: attemptId };
+                await db.submissions.create(submissionData);
+            }
             // Don't store the full submission objects in the attempt record itself
             delete values.newSubmissions;
         }
 
-        const updatedAttempt = db.examAttempts.update(attemptId, values);
+        const updatedAttempt = await db.examAttempts.update(attemptId, values);
         
         if (!updatedAttempt) {
             return new NextResponse("Attempt not found", { status: 404 });

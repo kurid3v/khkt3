@@ -1,101 +1,139 @@
-// FIX: Changed import to fix module resolution error for PrismaClient.
-import PrismaClient from '@prisma/client';
+
+import { PrismaClient } from '@prisma/client';
 import users from '../data/users.json';
 import problems from '../data/problems.json';
-// Import các file json khác nếu bạn muốn di dời dữ liệu của chúng
 import classrooms from '../data/classrooms.json';
 import exams from '../data/exams.json';
-import process from 'process';
+import submissions from '../data/submissions.json';
+import examAttempts from '../data/examAttempts.json';
+import type { Prisma } from '@prisma/client';
+
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Bắt đầu di dời dữ liệu...');
+  console.log('Starting to seed data...');
 
-  // Xóa dữ liệu cũ để tránh trùng lặp khi chạy lại script
-  // Chú ý thứ tự xóa để không vi phạm ràng buộc khóa ngoại
+  // Clear existing data to avoid conflicts, respecting foreign key constraints
+  console.log('Deleting old data...');
   await prisma.submission.deleteMany();
+  await prisma.examAttempt.deleteMany();
   await prisma.problem.deleteMany();
   await prisma.exam.deleteMany();
   await prisma.classroom.deleteMany();
   await prisma.user.deleteMany();
-  console.log('Đã xóa dữ liệu cũ.');
+  console.log('Old data deleted.');
 
-  // Di dời Users
-  console.log('Đang di dời Users...');
+  // Seed Users
+  console.log('Seeding Users...');
   await prisma.user.createMany({
     data: users,
     skipDuplicates: true,
   });
-  console.log(`Đã di dời ${users.length} người dùng.`);
+  console.log(`Seeded ${users.length} users.`);
 
-  // Di dời Problems
-  console.log('Đang di dời Problems...');
-  // Chuyển đổi các trường cần thiết trước khi chèn
+  // Seed Classrooms
+  if (classrooms && classrooms.length > 0) {
+    console.log('Seeding Classrooms...');
+    await prisma.classroom.createMany({
+      data: classrooms.map(c => ({
+        ...c,
+        studentIds: c.studentIds ?? [],
+      })),
+      skipDuplicates: true,
+    });
+    console.log(`Seeded ${classrooms.length} classrooms.`);
+  }
+
+  // Seed Exams
+  if (exams && exams.length > 0) {
+    console.log('Seeding Exams...');
+    await prisma.exam.createMany({
+      data: exams.map(e => ({
+        ...e,
+        createdAt: new Date(e.createdAt),
+        startTime: new Date(e.startTime),
+        endTime: new Date(e.endTime),
+        classroomIds: e.classroomIds ?? [],
+        password: e.password ?? null,
+        description: e.description ?? '',
+      })),
+      skipDuplicates: true,
+    });
+    console.log(`Seeded ${exams.length} exams.`);
+  }
+
+  // Seed Problems
+  console.log('Seeding Problems...');
   const formattedProblems = problems.map(p => ({
     ...p,
-    // Prisma yêu cầu kiểu Date, không phải number
     createdAt: new Date(p.createdAt),
-    // Prisma yêu cầu các trường JSON phải là JsonValue (không phải undefined)
-    rubricItems: p.rubricItems ?? [],
-    questions: p.questions ?? [],
+    rubricItems: (p.rubricItems ?? []) as Prisma.JsonValue,
+    questions: (p.questions ?? []) as Prisma.JsonValue,
     classroomIds: p.classroomIds ?? [],
-    // Đảm bảo các trường tùy chọn khác là null thay vì undefined
     prompt: p.prompt ?? null,
     rawRubric: p.rawRubric ?? null,
-    isRubricHidden: p.isRubricHidden ?? null,
+    isRubricHidden: p.isRubricHidden ?? false,
     passage: p.passage ?? null,
     customMaxScore: p.customMaxScore ?? null,
     examId: p.examId ?? null,
+    disablePaste: p.disablePaste ?? false,
   }));
-  
+
   await prisma.problem.createMany({
     data: formattedProblems,
     skipDuplicates: true,
   });
-  console.log(`Đã di dời ${problems.length} bài tập.`);
+  console.log(`Seeded ${problems.length} problems.`);
 
-  // Di dời Classrooms
-  if (classrooms && classrooms.length > 0) {
-    console.log('Đang di dời Classrooms...');
-    await prisma.classroom.createMany({
-        data: classrooms.map(c => ({
-            ...c,
-            studentIds: c.studentIds ?? [],
-        })),
+  // Seed Submissions
+  if (submissions && submissions.length > 0) {
+    console.log('Seeding Submissions...');
+    const formattedSubmissions = submissions.map(s => ({
+        ...s,
+        submittedAt: new Date(s.submittedAt),
+        lastEditedByTeacherAt: s.lastEditedByTeacherAt ? new Date(s.lastEditedByTeacherAt) : null,
+        feedback: s.feedback as Prisma.JsonValue,
+        answers: (s.answers ?? []) as Prisma.JsonValue,
+        similarityCheck: (s.similarityCheck ?? {}) as Prisma.JsonValue,
+        examId: s.examId ?? null,
+        essay: s.essay ?? null,
+    }));
+    await prisma.submission.createMany({
+        data: formattedSubmissions,
         skipDuplicates: true,
     });
-    console.log(`Đã di dời ${classrooms.length} lớp học.`);
+    console.log(`Seeded ${submissions.length} submissions.`);
   }
 
-  // Di dời Exams
-  if (exams && exams.length > 0) {
-    console.log('Đang di dời Exams...');
-    await prisma.exam.createMany({
-        data: exams.map(e => ({
-            ...e,
-            createdAt: new Date(e.createdAt),
-            startTime: new Date(e.startTime),
-            endTime: new Date(e.endTime),
-            classroomIds: e.classroomIds ?? [],
-            password: e.password ?? null,
-        })),
-        skipDuplicates: true,
-    });
-    console.log(`Đã di dời ${exams.length} đề thi.`);
+  // Seed Exam Attempts
+  if (examAttempts && examAttempts.length > 0) {
+      console.log('Seeding Exam Attempts...');
+      const formattedAttempts = examAttempts.map(a => ({
+          ...a,
+          startedAt: new Date(a.startedAt),
+          submittedAt: a.submittedAt ? new Date(a.submittedAt) : null,
+          fullscreenExits: (a.fullscreenExits ?? []).map(ts => new Date(ts)),
+          visibilityStateChanges: (a.visibilityStateChanges ?? []) as Prisma.JsonValue,
+          submissionIds: a.submissionIds ?? [],
+      }));
+      await prisma.examAttempt.createMany({
+          data: formattedAttempts,
+          skipDuplicates: true,
+      });
+      console.log(`Seeded ${examAttempts.length} exam attempts.`);
   }
 
-  console.log('Di dời dữ liệu hoàn tất.');
+
+  console.log('Seeding finished.');
 }
 
 main()
   .catch((e) => {
-    console.error('Đã xảy ra lỗi trong quá trình di dời dữ liệu:', e);
-    // FIX: Re-throwing the error will cause the process to exit with a non-zero status code
-    // due to the unhandled promise rejection, which is the desired behavior and fixes the type error.
-    throw e;
+    console.error('An error occurred during seeding:', e);
+    // FIX: Use a type assertion to bypass a potential TypeScript configuration issue where 'process.exit' is not found.
+    (process as any).exit(1);
   })
   .finally(async () => {
-    // Đóng kết nối Prisma
     await prisma.$disconnect();
   });

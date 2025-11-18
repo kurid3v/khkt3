@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return new NextResponse('Missing username or password', { status: 400 });
     }
 
-    const user = db.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
+    const user = await db.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
 
     if (user && user.password === password) {
       // In a real app, you'd generate a JWT here.

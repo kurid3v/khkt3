@@ -1,5 +1,4 @@
 
-
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
@@ -18,6 +17,8 @@ export async function POST(req: Request) {
           isRubricHidden,
           passage,
           questions,
+          disablePaste,
+          classroomIds,
         } = body;
         
         // Basic validation for common fields
@@ -31,34 +32,21 @@ export async function POST(req: Request) {
                 return new NextResponse('Missing required field for essay: prompt', { status: 400 });
             }
             problemData = {
-                title,
-                createdBy,
-                type,
-                examId,
-                prompt,
-                rawRubric,
-                rubricItems,
-                customMaxScore,
-                isRubricHidden,
+                title, createdBy, type, examId, prompt, rawRubric, rubricItems, customMaxScore, isRubricHidden, disablePaste, classroomIds
             };
         } else if (type === 'reading_comprehension') {
             if (!passage || !questions) {
                 return new NextResponse('Missing required fields for reading comprehension: passage, questions', { status: 400 });
             }
             problemData = {
-                title,
-                createdBy,
-                type,
-                examId,
-                passage,
-                questions,
-                customMaxScore: questions.length || 0,
+                title, createdBy, type, examId, passage, questions, disablePaste, classroomIds,
+                customMaxScore: questions.reduce((acc, q) => acc + (q.maxScore || 1), 0) || 0,
             };
         } else {
             return new NextResponse('Invalid problem type specified', { status: 400 });
         }
 
-        const newProblem = db.problems.create(problemData);
+        const newProblem = await db.problems.create(problemData);
 
         return NextResponse.json(newProblem, { status: 201 });
     } catch (error) {

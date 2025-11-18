@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
@@ -9,7 +10,7 @@ export async function PUT(
         const { submissionId } = params;
         const values = await req.json();
 
-        const updatedSubmission = db.submissions.update(submissionId, values);
+        const updatedSubmission = await db.submissions.update(submissionId, values);
         
         if (!updatedSubmission) {
             return new NextResponse("Submission not found", { status: 404 });
