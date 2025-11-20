@@ -11,6 +11,7 @@ import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { deleteProblem, removeExam, deleteUser } from '@/app/actions';
 import SwitchUserIcon from '@/components/icons/SwitchUserIcon';
+import { testConnection } from '@/services/geminiService';
 
 
 type ActiveTab = 'users' | 'problems' | 'submissions' | 'exams';
@@ -33,6 +34,10 @@ export default function AdminDashboardPage() {
     const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
     const [userToDelete, setUserToDelete] = useState<Omit<User, 'password'> | null>(null);
     const [isPending, startTransition] = useTransition();
+
+    // Connection test state
+    const [connectionStatus, setConnectionStatus] = useState<{ success: boolean; message: string; latency: number } | null>(null);
+    const [isTestingConnection, setIsTestingConnection] = useState(false);
 
     const [optimisticProblems, setOptimisticProblems] = useOptimistic(
         problems,
@@ -95,6 +100,16 @@ export default function AdminDashboardPage() {
             setUserToDelete(null);
         }
     };
+
+    const handleTestConnection = async () => {
+        setIsTestingConnection(true);
+        const result = await testConnection();
+        setConnectionStatus(result);
+        setIsTestingConnection(false);
+        
+        // Auto hide after 5 seconds
+        setTimeout(() => setConnectionStatus(null), 5000);
+    };
     
     const handlePageChange = (tab: ActiveTab, page: number) => {
         setCurrentPages(prev => ({ ...prev, [tab]: page }));
@@ -142,9 +157,34 @@ export default function AdminDashboardPage() {
     return (
         <>
             <div className="container mx-auto px-4 py-8 max-w-7xl">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-foreground">Bảng điều khiển quản trị</h1>
-                    <p className="text-muted-foreground mt-1">Quản lý toàn bộ dữ liệu của hệ thống.</p>
+                <header className="mb-8 flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground">Bảng điều khiển quản trị</h1>
+                        <p className="text-muted-foreground mt-1">Quản lý toàn bộ dữ liệu của hệ thống.</p>
+                    </div>
+                    <button 
+                        onClick={handleTestConnection} 
+                        disabled={isTestingConnection}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
+                            connectionStatus?.success 
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : connectionStatus?.success === false
+                            ? 'bg-red-100 text-red-700 border border-red-200'
+                            : 'bg-white border border-border hover:bg-slate-50'
+                        }`}
+                    >
+                        {isTestingConnection ? (
+                            <>
+                            <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full"></div>
+                            Đang kiểm tra...
+                            </>
+                        ) : (
+                            <>
+                                <span className={`h-2 w-2 rounded-full ${connectionStatus ? (connectionStatus.success ? 'bg-green-500' : 'bg-red-500') : 'bg-slate-400'}`}></span>
+                                {connectionStatus ? (connectionStatus.success ? `Kết nối ổn định (${connectionStatus.latency}ms)` : connectionStatus.message) : 'Kiểm tra kết nối AI'}
+                            </>
+                        )}
+                    </button>
                 </header>
 
                 <div className="bg-card p-4 sm:p-6 rounded-xl shadow-sm border border-border">

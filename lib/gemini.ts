@@ -1,12 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Feedback, RubricItem, Problem, Answer, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set on the server");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+// Initialize with a fallback to avoid build-time errors. 
+// The SDK will throw a runtime error if called without a valid key, which is expected behavior.
+const apiKey = process.env.API_KEY || "BUILD_TIME_PLACEHOLDER";
+const ai = new GoogleGenAI({ apiKey });
 
 /**
  * Extracts the first valid JSON object or array from a string.
@@ -76,6 +74,29 @@ function extractJson(text: string | undefined): string | null {
     }
 
     return null; // No matching closing bracket was found.
+}
+
+// --- CONNECTION TEST ---
+export async function testConnectionOnServer(): Promise<{ success: boolean; message: string; latency: number }> {
+    const start = Date.now();
+    try {
+        if (!process.env.API_KEY) {
+             throw new Error("API Key chưa được cấu hình trên server.");
+        }
+        await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: "Ping",
+        });
+        const latency = Date.now() - start;
+        return { success: true, message: "Kết nối đến Google Gemini ổn định.", latency };
+    } catch (error) {
+        console.error("Gemini connection test failed:", error);
+        return { 
+            success: false, 
+            message: error instanceof Error ? error.message : "Không thể kết nối đến Google Gemini.", 
+            latency: Date.now() - start 
+        };
+    }
 }
 
 // --- ESSAY GRADING ---

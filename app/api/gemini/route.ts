@@ -6,7 +6,8 @@ import {
     parseRubricOnServer, 
     gradeReadingComprehensionOnServer, 
     imageToTextOnServer,
-    checkSimilarityOnServer 
+    checkSimilarityOnServer,
+    testConnectionOnServer
 } from '@/lib/gemini';
 import type { Submission } from '@/types';
 
@@ -14,6 +15,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { action, payload } = body;
+
+    if (action === 'test_connection') {
+        const result = await testConnectionOnServer();
+        return NextResponse.json(result);
+    }
 
     if (action === 'grade') {
       const { problemId, prompt, essay, rubric, rawRubric, customMaxScore } = payload;

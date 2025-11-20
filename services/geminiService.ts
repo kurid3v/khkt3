@@ -18,6 +18,15 @@ async function callApi<T>(action: string, payload: unknown): Promise<T> {
   return response.json();
 }
 
+export async function testConnection(): Promise<{ success: boolean; message: string; latency: number }> {
+  try {
+    return await callApi<{ success: boolean; message: string; latency: number }>('test_connection', {});
+  } catch (error) {
+    console.error("Error in testConnection service:", error);
+    return { success: false, message: "Lỗi gọi API nội bộ.", latency: 0 };
+  }
+}
+
 export async function gradeEssay(problemId: string, prompt: string, essay: string, rubric: RubricItem[], rawRubric: string, customMaxScore: string): Promise<{ feedback: Feedback, similarityCheck: SimilarityCheckResult }> {
   try {
     return await callApi<{ feedback: Feedback, similarityCheck: SimilarityCheckResult }>('grade', { problemId, prompt, essay, rubric, rawRubric, customMaxScore });
