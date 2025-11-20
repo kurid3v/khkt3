@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 
@@ -18,26 +19,26 @@ if (process.env.NODE_ENV !== 'production') {
 export const db = {
     get all() {
         return {
-            users: prisma.user.findMany(),
-            problems: prisma.problem.findMany(),
-            submissions: prisma.submission.findMany(),
-            exams: prisma.exam.findMany(),
-            examAttempts: prisma.examAttempt.findMany(),
-            classrooms: prisma.classroom.findMany(),
+            users: prisma.user.findMany() as Promise<User[]>,
+            problems: prisma.problem.findMany() as Promise<Problem[]>,
+            submissions: prisma.submission.findMany() as Promise<Submission[]>,
+            exams: prisma.exam.findMany() as Promise<Exam[]>,
+            examAttempts: prisma.examAttempt.findMany() as Promise<ExamAttempt[]>,
+            classrooms: prisma.classroom.findMany() as Promise<Classroom[]>,
         };
     },
     users: {
         find: (predicate: (user: User) => boolean) => {
-            return prisma.user.findMany().then(users => users.find(predicate));
+            return prisma.user.findMany().then(users => (users as User[]).find(predicate));
         },
         some: (predicate: (user: User) => boolean) => {
-            return prisma.user.findMany().then(users => users.some(predicate));
+            return prisma.user.findMany().then(users => (users as User[]).some(predicate));
         },
         create: (data: Omit<User, 'id'>) => {
-            return prisma.user.create({ data: { ...data, id: crypto.randomUUID() } });
+            return prisma.user.create({ data: { ...data, id: crypto.randomUUID() } }) as Promise<User>;
         },
         update: (id: string, data: Partial<User>) => {
-            return prisma.user.update({ where: { id }, data });
+            return prisma.user.update({ where: { id }, data }) as Promise<User>;
         },
         delete: async (id: string) => {
             const adminUser = await prisma.user.findFirst({ where: { role: 'admin' }});
@@ -51,11 +52,18 @@ export const db = {
                 await tx.examAttempt.deleteMany({ where: { studentId: id } });
                 await tx.classroom.deleteMany({ where: { teacherId: id } });
                 
-                const classroomsAsStudent = await tx.classroom.findMany({ where: { studentIds: { has: id } } });
+                // In-memory filtering for JSON arrays (SQLite limitation)
+                const allClassrooms = await tx.classroom.findMany();
+                const classroomsAsStudent = allClassrooms.filter(c => {
+                    const students = c.studentIds as unknown as string[];
+                    return students.includes(id);
+                });
+
                 for(const classroom of classroomsAsStudent) {
+                    const currentStudents = classroom.studentIds as unknown as string[];
                     await tx.classroom.update({
                         where: { id: classroom.id },
-                        data: { studentIds: { set: classroom.studentIds.filter(sid => sid !== id) } }
+                        data: { studentIds: currentStudents.filter(sid => sid !== id) }
                     });
                 }
                 
@@ -75,7 +83,7 @@ export const db = {
                     questions: data.questions ?? undefined,
                     classroomIds: data.classroomIds ?? [],
                 }
-            });
+            }) as Promise<Problem>;
         },
         update: (id: string, data: Partial<Problem>) => {
              return prisma.problem.update({ 
@@ -85,7 +93,7 @@ export const db = {
                      rubricItems: data.rubricItems ?? undefined,
                      questions: data.questions ?? undefined,
                  }
-            });
+            }) as Promise<Problem>;
         },
         delete: (id: string) => {
             return prisma.problem.delete({ where: { id } });
@@ -102,7 +110,7 @@ export const db = {
                     answers: data.answers ?? undefined,
                     similarityCheck: data.similarityCheck ?? undefined,
                 } 
-            });
+            }) as Promise<Submission>;
         },
         update: (id: string, data: Partial<Submission>) => {
             return prisma.submission.update({ 
@@ -113,7 +121,7 @@ export const db = {
                     answers: data.answers ?? undefined,
                     similarityCheck: data.similarityCheck ?? undefined,
                 }
-            });
+            }) as Promise<Submission>;
         },
     },
     exams: {
@@ -127,7 +135,7 @@ export const db = {
                     endTime: new Date(data.endTime),
                     classroomIds: data.classroomIds ?? [],
                 }
-            });
+            }) as Promise<Exam>;
         },
         delete: (id: string) => {
             return prisma.exam.delete({ where: { id } });
@@ -144,7 +152,7 @@ export const db = {
                     visibilityStateChanges: [],
                     submissionIds: [],
                 }
-            });
+            }) as Promise<ExamAttempt>;
         },
         update: (id: string, data: Partial<ExamAttempt>) => {
              return prisma.examAttempt.update({ 
@@ -153,12 +161,12 @@ export const db = {
                     ...data,
                     visibilityStateChanges: data.visibilityStateChanges ?? undefined,
                 }
-            });
+            }) as Promise<ExamAttempt>;
         },
     },
     classrooms: {
         find: (predicate: (classroom: Classroom) => boolean) => {
-            return prisma.classroom.findMany().then(classrooms => classrooms.find(predicate));
+            return prisma.classroom.findMany().then(classrooms => (classrooms as Classroom[]).find(predicate));
         },
         create: (data: Omit<Classroom, 'id' | 'studentIds' | 'joinCode'>) => {
             const generateJoinCode = () => {
@@ -176,25 +184,39 @@ export const db = {
                     studentIds: [],
                     joinCode: generateJoinCode(),
                 }
-            });
+            }) as Promise<Classroom>;
         },
         update: (id: string, data: Partial<Classroom>) => {
-            return prisma.classroom.update({ where: { id }, data });
+            return prisma.classroom.update({ where: { id }, data }) as Promise<Classroom>;
         },
         delete: (id: string) => {
             return prisma.$transaction(async (tx) => {
-                const problemsToUpdate = await tx.problem.findMany({ where: { classroomIds: { has: id } } });
+                // In-memory filtering for JSON arrays
+                const allProblems = await tx.problem.findMany();
+                const problemsToUpdate = allProblems.filter(p => {
+                    const cids = p.classroomIds as unknown as string[];
+                    return cids.includes(id);
+                });
+
                 for (const problem of problemsToUpdate) {
+                    const cids = problem.classroomIds as unknown as string[];
                     await tx.problem.update({
                         where: { id: problem.id },
-                        data: { classroomIds: { set: problem.classroomIds.filter(cid => cid !== id) } }
+                        data: { classroomIds: cids.filter(cid => cid !== id) }
                     });
                 }
-                const examsToUpdate = await tx.exam.findMany({ where: { classroomIds: { has: id } } });
+
+                const allExams = await tx.exam.findMany();
+                const examsToUpdate = allExams.filter(e => {
+                    const cids = e.classroomIds as unknown as string[];
+                    return cids.includes(id);
+                });
+
                 for (const exam of examsToUpdate) {
+                    const cids = exam.classroomIds as unknown as string[];
                     await tx.exam.update({
                         where: { id: exam.id },
-                        data: { classroomIds: { set: exam.classroomIds.filter(cid => cid !== id) } }
+                        data: { classroomIds: cids.filter(cid => cid !== id) }
                     });
                 }
                 await tx.classroom.delete({ where: { id } });

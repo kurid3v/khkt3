@@ -8,7 +8,8 @@ import type { User, Problem, Submission, Exam, ExamAttempt } from '@/types';
 
 export async function getUsers() {
     // Exclude passwords when fetching users
-    return db.all.users.map(({ password, ...user }) => user);
+    const users = await db.all.users;
+    return users.map(({ password, ...user }) => user);
 }
 
 export async function getProblems(): Promise<Problem[]> {
@@ -16,7 +17,8 @@ export async function getProblems(): Promise<Problem[]> {
 }
 
 export async function getProblemById(id: string): Promise<Problem | undefined> {
-    return db.all.problems.find(p => p.id === id);
+    const problems = await db.all.problems;
+    return problems.find(p => p.id === id);
 }
 
 export async function getSubmissions(): Promise<Submission[]> {

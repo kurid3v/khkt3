@@ -1,3 +1,4 @@
+
 import { PrismaClient, Prisma } from '@prisma/client';
 import users from '../data/users.json';
 import problems from '../data/problems.json';
@@ -103,7 +104,7 @@ async function main() {
           ...a,
           startedAt: new Date(a.startedAt),
           submittedAt: a.submittedAt ? new Date(a.submittedAt) : null,
-          fullscreenExits: (a.fullscreenExits ?? []).map(ts => new Date(ts)),
+          fullscreenExits: (a.fullscreenExits ?? []) as Prisma.JsonValue, // Keep as numbers for Json field
           visibilityStateChanges: (a.visibilityStateChanges ?? []) as Prisma.JsonValue,
           submissionIds: a.submissionIds ?? [],
       }));
