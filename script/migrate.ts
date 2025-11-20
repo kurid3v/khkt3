@@ -1,4 +1,3 @@
-
 import { PrismaClient, Prisma } from '@prisma/client';
 import users from '../data/users.json';
 import problems from '../data/problems.json';
@@ -7,13 +6,11 @@ import exams from '../data/exams.json';
 import submissions from '../data/submissions.json';
 import examAttempts from '../data/examAttempts.json';
 
-
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting to seed data...');
 
-  // Clear existing data to avoid conflicts, respecting foreign key constraints
   console.log('Deleting old data...');
   await prisma.submission.deleteMany();
   await prisma.examAttempt.deleteMany();
@@ -23,7 +20,6 @@ async function main() {
   await prisma.user.deleteMany();
   console.log('Old data deleted.');
 
-  // Seed Users
   console.log('Seeding Users...');
   await prisma.user.createMany({
     data: users,
@@ -31,7 +27,6 @@ async function main() {
   });
   console.log(`Seeded ${users.length} users.`);
 
-  // Seed Classrooms
   if (classrooms && classrooms.length > 0) {
     console.log('Seeding Classrooms...');
     await prisma.classroom.createMany({
@@ -44,7 +39,6 @@ async function main() {
     console.log(`Seeded ${classrooms.length} classrooms.`);
   }
 
-  // Seed Exams
   if (exams && exams.length > 0) {
     console.log('Seeding Exams...');
     await prisma.exam.createMany({
@@ -62,7 +56,6 @@ async function main() {
     console.log(`Seeded ${exams.length} exams.`);
   }
 
-  // Seed Problems
   console.log('Seeding Problems...');
   const formattedProblems = problems.map(p => ({
     ...p,
@@ -85,7 +78,6 @@ async function main() {
   });
   console.log(`Seeded ${problems.length} problems.`);
 
-  // Seed Submissions
   if (submissions && submissions.length > 0) {
     console.log('Seeding Submissions...');
     const formattedSubmissions = submissions.map(s => ({
@@ -105,7 +97,6 @@ async function main() {
     console.log(`Seeded ${submissions.length} submissions.`);
   }
 
-  // Seed Exam Attempts
   if (examAttempts && examAttempts.length > 0) {
       console.log('Seeding Exam Attempts...');
       const formattedAttempts = examAttempts.map(a => ({
@@ -122,7 +113,6 @@ async function main() {
       });
       console.log(`Seeded ${examAttempts.length} exam attempts.`);
   }
-
 
   console.log('Seeding finished.');
 }

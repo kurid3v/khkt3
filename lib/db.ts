@@ -1,24 +1,20 @@
-
 import { PrismaClient } from '@prisma/client';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 
-// PrismaClient is attached to the `global` object in development to prevent
-// exhausting your database connection limit.
-//
-// Learn more: https://pris.ly/d/help/next-js-best-practices
+const prismaClientSingleton = () => {
+  return new PrismaClient()
+}
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
 }
 
-const prisma = globalThis.prisma || new PrismaClient();
+const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
+  globalThis.prismaGlobal = prisma
 }
 
-
-// New data access layer using Prisma
 export const db = {
     get all() {
         return {
@@ -32,8 +28,6 @@ export const db = {
     },
     users: {
         find: (predicate: (user: User) => boolean) => {
-            // This is inefficient and should be replaced by specific queries
-            // For now, it mimics the old behavior
             return prisma.user.findMany().then(users => users.find(predicate));
         },
         some: (predicate: (user: User) => boolean) => {
@@ -51,16 +45,12 @@ export const db = {
             if (id === adminUser.id) throw new Error("Cannot delete the primary admin user.");
 
             return prisma.$transaction(async (tx) => {
-                // Reassign content
                 await tx.problem.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
                 await tx.exam.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
-                
-                // Delete user-specific data
                 await tx.submission.deleteMany({ where: { submitterId: id } });
                 await tx.examAttempt.deleteMany({ where: { studentId: id } });
                 await tx.classroom.deleteMany({ where: { teacherId: id } });
-
-                // Remove user from any classes they are a student in
+                
                 const classroomsAsStudent = await tx.classroom.findMany({ where: { studentIds: { has: id } } });
                 for(const classroom of classroomsAsStudent) {
                     await tx.classroom.update({
@@ -69,7 +59,6 @@ export const db = {
                     });
                 }
                 
-                // Finally, delete the user
                 await tx.user.delete({ where: { id } });
                 return true;
             });
@@ -194,7 +183,6 @@ export const db = {
         },
         delete: (id: string) => {
             return prisma.$transaction(async (tx) => {
-                // Unassign classroom from problems and exams
                 const problemsToUpdate = await tx.problem.findMany({ where: { classroomIds: { has: id } } });
                 for (const problem of problemsToUpdate) {
                     await tx.problem.update({
@@ -209,7 +197,6 @@ export const db = {
                         data: { classroomIds: { set: exam.classroomIds.filter(cid => cid !== id) } }
                     });
                 }
-                // Delete classroom
                 await tx.classroom.delete({ where: { id } });
                 return true;
             });
