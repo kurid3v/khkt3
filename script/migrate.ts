@@ -1,15 +1,15 @@
 
-import { PrismaClient } from '@prisma/client';
+// FIX: Switched to a namespace import for Prisma to handle potential module resolution issues.
+import * as PrismaScope from '@prisma/client';
 import users from '../data/users.json';
 import problems from '../data/problems.json';
 import classrooms from '../data/classrooms.json';
 import exams from '../data/exams.json';
 import submissions from '../data/submissions.json';
 import examAttempts from '../data/examAttempts.json';
-import type { Prisma } from '@prisma/client';
 
 
-const prisma = new PrismaClient();
+const prisma = new PrismaScope.PrismaClient();
 
 async function main() {
   console.log('Starting to seed data...');
@@ -68,8 +68,10 @@ async function main() {
   const formattedProblems = problems.map(p => ({
     ...p,
     createdAt: new Date(p.createdAt),
-    rubricItems: (p.rubricItems ?? []) as Prisma.JsonValue,
-    questions: (p.questions ?? []) as Prisma.JsonValue,
+    // FIX: Use namespace for Prisma types.
+    rubricItems: (p.rubricItems ?? []) as PrismaScope.Prisma.JsonValue,
+    // FIX: Use namespace for Prisma types.
+    questions: (p.questions ?? []) as PrismaScope.Prisma.JsonValue,
     classroomIds: p.classroomIds ?? [],
     prompt: p.prompt ?? null,
     rawRubric: p.rawRubric ?? null,
@@ -93,9 +95,12 @@ async function main() {
         ...s,
         submittedAt: new Date(s.submittedAt),
         lastEditedByTeacherAt: s.lastEditedByTeacherAt ? new Date(s.lastEditedByTeacherAt) : null,
-        feedback: s.feedback as Prisma.JsonValue,
-        answers: (s.answers ?? []) as Prisma.JsonValue,
-        similarityCheck: (s.similarityCheck ?? {}) as Prisma.JsonValue,
+        // FIX: Use namespace for Prisma types.
+        feedback: s.feedback as PrismaScope.Prisma.JsonValue,
+        // FIX: Use namespace for Prisma types.
+        answers: (s.answers ?? []) as PrismaScope.Prisma.JsonValue,
+        // FIX: Use namespace for Prisma types.
+        similarityCheck: (s.similarityCheck ?? {}) as PrismaScope.Prisma.JsonValue,
         examId: s.examId ?? null,
         essay: s.essay ?? null,
     }));
@@ -114,7 +119,8 @@ async function main() {
           startedAt: new Date(a.startedAt),
           submittedAt: a.submittedAt ? new Date(a.submittedAt) : null,
           fullscreenExits: (a.fullscreenExits ?? []).map(ts => new Date(ts)),
-          visibilityStateChanges: (a.visibilityStateChanges ?? []) as Prisma.JsonValue,
+          // FIX: Use namespace for Prisma types.
+          visibilityStateChanges: (a.visibilityStateChanges ?? []) as PrismaScope.Prisma.JsonValue,
           submissionIds: a.submissionIds ?? [],
       }));
       await prisma.examAttempt.createMany({

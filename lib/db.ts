@@ -1,5 +1,5 @@
 
-import { PrismaClient } from '@prisma/client';
+import * as PrismaScope from '@prisma/client';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 
 // PrismaClient is attached to the `global` object in development to prevent
@@ -8,11 +8,13 @@ import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/
 // Learn more: https://pris.ly/d/help/next-js-best-practices
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  // FIX: Update global prisma type to use namespace.
+  var prisma: PrismaScope.PrismaClient | undefined;
 }
 
 // FIX: Replaced 'global' with 'globalThis' for broader environment compatibility and to resolve type errors.
-const prisma = globalThis.prisma || new PrismaClient();
+// FIX: Use namespace import for PrismaClient instantiation.
+const prisma = globalThis.prisma || new PrismaScope.PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   // FIX: Replaced 'global' with 'globalThis' for broader environment compatibility and to resolve type errors.
