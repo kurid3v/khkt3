@@ -1,174 +1,197 @@
 
-import { PrismaClient } from '@prisma/client';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
+import initialUsers from '../data/users.json';
+import initialProblems from '../data/problems.json';
+import initialClassrooms from '../data/classrooms.json';
+import initialExams from '../data/exams.json';
+import initialSubmissions from '../data/submissions.json';
+import initialExamAttempts from '../data/examAttempts.json';
 
-const prismaClientSingleton = () => {
-  return new PrismaClient()
+// In-memory store class
+class Store {
+  users: User[];
+  problems: Problem[];
+  submissions: Submission[];
+  exams: Exam[];
+  examAttempts: ExamAttempt[];
+  classrooms: Classroom[];
+
+  constructor() {
+    this.users = [...initialUsers] as User[];
+    this.problems = [...initialProblems] as Problem[];
+    this.submissions = [...initialSubmissions] as Submission[];
+    this.exams = [...initialExams] as Exam[];
+    this.examAttempts = [...initialExamAttempts] as ExamAttempt[];
+    this.classrooms = [...initialClassrooms] as Classroom[];
+  }
 }
 
+// Global singleton to persist data across hot reloads in development
 declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
+  var storeGlobal: Store | undefined;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
+const store = globalThis.storeGlobal ?? new Store();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prismaGlobal = prisma
+  globalThis.storeGlobal = store;
 }
 
+// Helper to simulate async DB delay slightly if needed, but for now we resolve immediately.
 export const db = {
     get all() {
         return {
-            users: prisma.user.findMany() as Promise<User[]>,
-            problems: prisma.problem.findMany() as Promise<Problem[]>,
-            submissions: prisma.submission.findMany() as Promise<Submission[]>,
-            exams: prisma.exam.findMany() as Promise<Exam[]>,
-            examAttempts: prisma.examAttempt.findMany() as Promise<ExamAttempt[]>,
-            classrooms: prisma.classroom.findMany() as Promise<Classroom[]>,
+            users: Promise.resolve([...store.users]),
+            problems: Promise.resolve([...store.problems]),
+            submissions: Promise.resolve([...store.submissions]),
+            exams: Promise.resolve([...store.exams]),
+            examAttempts: Promise.resolve([...store.examAttempts]),
+            classrooms: Promise.resolve([...store.classrooms]),
         };
     },
     users: {
-        find: (predicate: (user: User) => boolean) => {
-            return prisma.user.findMany().then(users => (users as User[]).find(predicate));
+        find: async (predicate: (user: User) => boolean) => {
+            return store.users.find(predicate);
         },
-        some: (predicate: (user: User) => boolean) => {
-            return prisma.user.findMany().then(users => (users as User[]).some(predicate));
+        some: async (predicate: (user: User) => boolean) => {
+            return store.users.some(predicate);
         },
-        create: (data: Omit<User, 'id'>) => {
-            return prisma.user.create({ data: { ...data, id: crypto.randomUUID() } }) as Promise<User>;
+        create: async (data: Omit<User, 'id'>) => {
+            const newUser = { ...data, id: crypto.randomUUID() } as User;
+            store.users.push(newUser);
+            return newUser;
         },
-        update: (id: string, data: Partial<User>) => {
-            return prisma.user.update({ where: { id }, data }) as Promise<User>;
+        update: async (id: string, data: Partial<User>) => {
+            const index = store.users.findIndex(u => u.id === id);
+            if (index === -1) throw new Error("User not found");
+            store.users[index] = { ...store.users[index], ...data };
+            return store.users[index];
         },
         delete: async (id: string) => {
-            const adminUser = await prisma.user.findFirst({ where: { role: 'admin' }});
+            const adminUser = store.users.find(u => u.role === 'admin');
             if (!adminUser) throw new Error("Admin user not found for content reassignment.");
             if (id === adminUser.id) throw new Error("Cannot delete the primary admin user.");
 
-            return prisma.$transaction(async (tx) => {
-                await tx.problem.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
-                await tx.exam.updateMany({ where: { createdBy: id }, data: { createdBy: adminUser.id } });
-                await tx.submission.deleteMany({ where: { submitterId: id } });
-                await tx.examAttempt.deleteMany({ where: { studentId: id } });
-                await tx.classroom.deleteMany({ where: { teacherId: id } });
-                
-                // In-memory filtering for JSON arrays (SQLite limitation)
-                const allClassrooms = await tx.classroom.findMany();
-                const classroomsAsStudent = allClassrooms.filter(c => {
-                    const students = c.studentIds as unknown as string[];
-                    return students.includes(id);
-                });
+            // Reassign content ownership
+            store.problems.forEach(p => { if (p.createdBy === id) p.createdBy = adminUser.id; });
+            store.exams.forEach(e => { if (e.createdBy === id) e.createdBy = adminUser.id; });
 
-                for(const classroom of classroomsAsStudent) {
-                    const currentStudents = classroom.studentIds as unknown as string[];
-                    await tx.classroom.update({
-                        where: { id: classroom.id },
-                        data: { studentIds: currentStudents.filter(sid => sid !== id) }
-                    });
-                }
-                
-                await tx.user.delete({ where: { id } });
-                return true;
+            // Delete related data
+            store.submissions = store.submissions.filter(s => s.submitterId !== id);
+            store.examAttempts = store.examAttempts.filter(a => a.studentId !== id);
+            
+            // Handle classroom teacher removal and student removal
+            store.classrooms = store.classrooms.filter(c => c.teacherId !== id);
+            store.classrooms.forEach(c => {
+                c.studentIds = c.studentIds.filter(sid => sid !== id);
             });
+
+            store.users = store.users.filter(u => u.id !== id);
+            return true;
         }
     },
     problems: {
-        create: (data: Omit<Problem, 'id' | 'createdAt'>) => {
-            return prisma.problem.create({
-                data: {
-                    ...data,
-                    id: crypto.randomUUID(),
-                    createdAt: new Date(),
-                    rubricItems: data.rubricItems ?? undefined,
-                    questions: data.questions ?? undefined,
-                    classroomIds: data.classroomIds ?? [],
-                }
-            }) as Promise<Problem>;
+        create: async (data: Omit<Problem, 'id' | 'createdAt'>) => {
+            const newProblem = {
+                ...data,
+                id: crypto.randomUUID(),
+                createdAt: Date.now(),
+                rubricItems: data.rubricItems ?? undefined,
+                questions: data.questions ?? undefined,
+                classroomIds: data.classroomIds ?? [],
+            } as Problem;
+            store.problems.push(newProblem);
+            return newProblem;
         },
-        update: (id: string, data: Partial<Problem>) => {
-             return prisma.problem.update({ 
-                 where: { id }, 
-                 data: {
-                     ...data,
-                     rubricItems: data.rubricItems ?? undefined,
-                     questions: data.questions ?? undefined,
-                 }
-            }) as Promise<Problem>;
+        update: async (id: string, data: Partial<Problem>) => {
+             const index = store.problems.findIndex(p => p.id === id);
+             if (index === -1) throw new Error("Problem not found");
+             store.problems[index] = { 
+                 ...store.problems[index], 
+                 ...data,
+                 rubricItems: data.rubricItems ?? store.problems[index].rubricItems,
+                 questions: data.questions ?? store.problems[index].questions
+             };
+            return store.problems[index];
         },
-        delete: (id: string) => {
-            return prisma.problem.delete({ where: { id } });
+        delete: async (id: string) => {
+            store.problems = store.problems.filter(p => p.id !== id);
+            return { id };
         }
     },
     submissions: {
-         create: (data: Omit<Submission, 'id' | 'submittedAt'>) => {
-            return prisma.submission.create({ 
-                data: { 
-                    ...data,
-                    id: crypto.randomUUID(),
-                    submittedAt: new Date(),
-                    feedback: data.feedback,
-                    answers: data.answers ?? undefined,
-                    similarityCheck: data.similarityCheck ?? undefined,
-                } 
-            }) as Promise<Submission>;
+         create: async (data: Omit<Submission, 'id' | 'submittedAt'>) => {
+            const newSubmission = { 
+                ...data,
+                id: crypto.randomUUID(),
+                submittedAt: Date.now(),
+                feedback: data.feedback,
+                answers: data.answers ?? undefined,
+                similarityCheck: data.similarityCheck ?? undefined,
+            } as Submission;
+            store.submissions.push(newSubmission);
+            return newSubmission;
         },
-        update: (id: string, data: Partial<Submission>) => {
-            return prisma.submission.update({ 
-                where: { id }, 
-                data: {
-                    ...data,
-                    feedback: data.feedback ?? undefined,
-                    answers: data.answers ?? undefined,
-                    similarityCheck: data.similarityCheck ?? undefined,
-                }
-            }) as Promise<Submission>;
+        update: async (id: string, data: Partial<Submission>) => {
+            const index = store.submissions.findIndex(s => s.id === id);
+            if (index === -1) throw new Error("Submission not found");
+            store.submissions[index] = { 
+                ...store.submissions[index], 
+                ...data,
+                feedback: data.feedback ?? store.submissions[index].feedback,
+                answers: data.answers ?? store.submissions[index].answers,
+                similarityCheck: data.similarityCheck ?? store.submissions[index].similarityCheck
+            };
+            return store.submissions[index];
         },
     },
     exams: {
-         create: (data: Omit<Exam, 'id' | 'createdAt'>) => {
-            return prisma.exam.create({ 
-                data: { 
-                    ...data,
-                    id: crypto.randomUUID(),
-                    createdAt: new Date(),
-                    startTime: new Date(data.startTime),
-                    endTime: new Date(data.endTime),
-                    classroomIds: data.classroomIds ?? [],
-                }
-            }) as Promise<Exam>;
+         create: async (data: Omit<Exam, 'id' | 'createdAt'>) => {
+            const newExam = { 
+                ...data,
+                id: crypto.randomUUID(),
+                createdAt: Date.now(),
+                startTime: Number(data.startTime),
+                endTime: Number(data.endTime),
+                classroomIds: data.classroomIds ?? [],
+            } as Exam;
+            store.exams.push(newExam);
+            return newExam;
         },
-        delete: (id: string) => {
-            return prisma.exam.delete({ where: { id } });
+        delete: async (id: string) => {
+            store.exams = store.exams.filter(e => e.id !== id);
+            return { id };
         }
     },
     examAttempts: {
-        create: (data: Omit<ExamAttempt, 'id' | 'startedAt' | 'fullscreenExits' | 'visibilityStateChanges' | 'submissionIds'>) => {
-            return prisma.examAttempt.create({
-                data: {
-                    ...data,
-                    id: crypto.randomUUID(),
-                    startedAt: new Date(),
-                    fullscreenExits: [],
-                    visibilityStateChanges: [],
-                    submissionIds: [],
-                }
-            }) as Promise<ExamAttempt>;
+        create: async (data: Omit<ExamAttempt, 'id' | 'startedAt' | 'fullscreenExits' | 'visibilityStateChanges' | 'submissionIds'>) => {
+            const newAttempt = {
+                ...data,
+                id: crypto.randomUUID(),
+                startedAt: Date.now(),
+                fullscreenExits: [],
+                visibilityStateChanges: [],
+                submissionIds: [],
+            } as ExamAttempt;
+            store.examAttempts.push(newAttempt);
+            return newAttempt;
         },
-        update: (id: string, data: Partial<ExamAttempt>) => {
-             return prisma.examAttempt.update({ 
-                where: { id }, 
-                data: {
-                    ...data,
-                    visibilityStateChanges: data.visibilityStateChanges ?? undefined,
-                }
-            }) as Promise<ExamAttempt>;
+        update: async (id: string, data: Partial<ExamAttempt>) => {
+             const index = store.examAttempts.findIndex(a => a.id === id);
+             if (index === -1) throw new Error("Exam attempt not found");
+             store.examAttempts[index] = { 
+                 ...store.examAttempts[index], 
+                 ...data,
+                 visibilityStateChanges: data.visibilityStateChanges ?? store.examAttempts[index].visibilityStateChanges
+             };
+            return store.examAttempts[index];
         },
     },
     classrooms: {
-        find: (predicate: (classroom: Classroom) => boolean) => {
-            return prisma.classroom.findMany().then(classrooms => (classrooms as Classroom[]).find(predicate));
+        find: async (predicate: (classroom: Classroom) => boolean) => {
+            return store.classrooms.find(predicate);
         },
-        create: (data: Omit<Classroom, 'id' | 'studentIds' | 'joinCode'>) => {
+        create: async (data: Omit<Classroom, 'id' | 'studentIds' | 'joinCode'>) => {
             const generateJoinCode = () => {
                 const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
                 let code = '';
@@ -177,51 +200,35 @@ export const db = {
                 }
                 return code;
             };
-            return prisma.classroom.create({
-                data: {
-                    ...data,
-                    id: crypto.randomUUID(),
-                    studentIds: [],
-                    joinCode: generateJoinCode(),
-                }
-            }) as Promise<Classroom>;
+            const newClassroom = {
+                ...data,
+                id: crypto.randomUUID(),
+                studentIds: [],
+                joinCode: generateJoinCode(),
+            } as Classroom;
+            store.classrooms.push(newClassroom);
+            return newClassroom;
         },
-        update: (id: string, data: Partial<Classroom>) => {
-            return prisma.classroom.update({ where: { id }, data }) as Promise<Classroom>;
+        update: async (id: string, data: Partial<Classroom>) => {
+            const index = store.classrooms.findIndex(c => c.id === id);
+            if (index === -1) throw new Error("Classroom not found");
+            store.classrooms[index] = { ...store.classrooms[index], ...data };
+            return store.classrooms[index];
         },
-        delete: (id: string) => {
-            return prisma.$transaction(async (tx) => {
-                // In-memory filtering for JSON arrays
-                const allProblems = await tx.problem.findMany();
-                const problemsToUpdate = allProblems.filter(p => {
-                    const cids = p.classroomIds as unknown as string[];
-                    return cids.includes(id);
-                });
-
-                for (const problem of problemsToUpdate) {
-                    const cids = problem.classroomIds as unknown as string[];
-                    await tx.problem.update({
-                        where: { id: problem.id },
-                        data: { classroomIds: cids.filter(cid => cid !== id) }
-                    });
+        delete: async (id: string) => {
+            // Remove references in problems and exams
+            store.problems.forEach(p => {
+                if (p.classroomIds) {
+                    p.classroomIds = p.classroomIds.filter(cid => cid !== id);
                 }
-
-                const allExams = await tx.exam.findMany();
-                const examsToUpdate = allExams.filter(e => {
-                    const cids = e.classroomIds as unknown as string[];
-                    return cids.includes(id);
-                });
-
-                for (const exam of examsToUpdate) {
-                    const cids = exam.classroomIds as unknown as string[];
-                    await tx.exam.update({
-                        where: { id: exam.id },
-                        data: { classroomIds: cids.filter(cid => cid !== id) }
-                    });
-                }
-                await tx.classroom.delete({ where: { id } });
-                return true;
             });
+            store.exams.forEach(e => {
+                if (e.classroomIds) {
+                    e.classroomIds = e.classroomIds.filter(cid => cid !== id);
+                }
+            });
+            store.classrooms = store.classrooms.filter(c => c.id !== id);
+            return true;
         }
     }
 };
