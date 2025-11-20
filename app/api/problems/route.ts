@@ -40,7 +40,8 @@ export async function POST(req: Request) {
             }
             problemData = {
                 title, createdBy, type, examId, passage, questions, disablePaste, classroomIds,
-                customMaxScore: questions.reduce((acc, q) => acc + (q.maxScore || 1), 0) || 0,
+                // FIX: Added type annotation for accumulator (acc: number) to resolve build error
+                customMaxScore: questions.reduce((acc: number, q: any) => acc + (Number(q.maxScore) || 1), 0) || 0,
             };
         } else {
             return new NextResponse('Invalid problem type specified', { status: 400 });

@@ -1,7 +1,5 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Feedback, RubricItem, Problem, Answer, Question, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
+import type { Feedback, RubricItem, Problem, Answer, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set on the server");
@@ -317,176 +315,144 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
                 questionId: q.id,
                 questionText: q.questionText,
                 maxScore: q.maxScore || 1,
-                gradingCriteria: q.gradingCriteria || "Dựa vào đoạn văn để đánh giá.",
-                studentAnswer: studentAnswer?.writtenAnswer || "Học sinh không trả lời."
+                gradingCriteria: q.gradingCriteria || "Chấm điểm dựa trên sự chính xác và đầy đủ của câu trả lời.",
+                studentAnswer: studentAnswer?.writtenAnswer || ""
             };
         });
 
-        const prompt = `
-            **Đoạn văn:**
-            """${passage}"""
+        const content = `
+            Đoạn văn: """${passage}"""
 
-            **Hướng dẫn:** Vui lòng chấm điểm các câu trả lời sau đây dựa trên đoạn văn và tiêu chí cho từng câu.
-            
-            **Danh sách câu trả lời cần chấm:**
+            Danh sách câu hỏi và câu trả lời của học sinh:
             ${JSON.stringify(questionsToGrade, null, 2)}
-        `.trim();
 
-        try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
-                config: {
-                    systemInstruction: readingCompSystemInstruction,
-                    responseMimeType: "application/json",
-                    responseSchema: readingCompGradingSchema,
-                    temperature: 0.1,
-                }
-            });
+            Hãy chấm điểm và đưa ra nhận xét cho từng câu hỏi.
+        `;
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: content,
+            config: {
+                systemInstruction: readingCompSystemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: readingCompGradingSchema,
+                temperature: 0,
+            },
+        });
 
-            const jsonText = extractJson(response.text);
-            if (jsonText) {
-                const results = JSON.parse(jsonText) as { questionId: string, score: number, feedback: string }[];
-                const resultsMap = new Map(results.map(r => [r.questionId, r]));
-                
-                for (const question of shortAnswerQuestions) {
-                    const result = resultsMap.get(question.id);
-                    const maxScore = question.maxScore || 1;
-                    if (result) {
-                        const clampedScore = Math.max(0, Math.min(result.score, maxScore));
-                        saResults[question.id] = { criterion: question.questionText, score: clampedScore, feedback: result.feedback, questionId: question.id };
-                    } else {
-                         saResults[question.id] = { criterion: question.questionText, score: 0, feedback: "AI không thể chấm câu trả lời này.", questionId: question.id };
-                    }
-                }
-            } else {
-                 throw new Error("AI response for short answers was empty or invalid.");
-            }
-        } catch (err) {
-            console.error(`Failed to batch grade short answers`, err);
-            // If batch fails, provide a default error feedback for all short answers
-            for (const question of shortAnswerQuestions) {
-                saResults[question.id] = { criterion: question.questionText, score: 0, feedback: "Đã xảy ra lỗi trong quá trình chấm bài tự động.", questionId: question.id };
+        const jsonText = extractJson(response.text);
+        if (jsonText) {
+             const parsed: any[] = JSON.parse(jsonText);
+            for (const item of parsed) {
+                saResults[item.questionId] = {
+                    questionId: item.questionId,
+                    criterion: shortAnswerQuestions.find(q => q.id === item.questionId)?.questionText || "Câu hỏi",
+                    score: item.score,
+                    feedback: item.feedback
+                };
             }
         }
     }
 
-    // 3. Combine results in the original order
-    for (const question of questions) {
-        const result = mcResults[question.id] || saResults[question.id];
-        if (result) {
-            detailedFeedback.push(result);
-            totalScore += result.score;
+    // Combine results
+    questions.forEach(q => {
+        if (q.questionType === 'multiple_choice') {
+            if (mcResults[q.id]) detailedFeedback.push(mcResults[q.id]);
+        } else {
+            if (saResults[q.id]) detailedFeedback.push(saResults[q.id]);
+             // Handle case where AI didn't return result for a question (shouldn't happen but safety net)
+            else if (!detailedFeedback.find(df => df.questionId === q.id)) {
+                 detailedFeedback.push({
+                    questionId: q.id,
+                    criterion: q.questionText,
+                    score: 0,
+                    feedback: "Không thể chấm điểm câu này do lỗi hệ thống hoặc câu trả lời trống."
+                 });
+            }
         }
-    }
-    
-    const totalMaxScore = questions.reduce((acc, q) => acc + (q.maxScore ?? 1), 0);
+    });
+
+    totalScore = detailedFeedback.reduce((sum, item) => sum + item.score, 0);
+    const maxScore = questions.reduce((sum, q) => sum + (q.maxScore || 1), 0);
 
     return {
         detailedFeedback,
         totalScore,
-        maxScore: totalMaxScore,
-        generalSuggestions: [], // No general suggestions for reading comprehension for now
+        maxScore,
+        generalSuggestions: []
     };
 }
 
-
-// --- IMAGE TO TEXT (OCR) ---
 export async function imageToTextOnServer(base64Image: string): Promise<string> {
-    const imagePart = {
-        inlineData: {
-            mimeType: 'image/jpeg',
-            data: base64Image,
-        },
-    };
-    const textPart = {
-        text: "Sử dụng công nghệ OCR tiên tiến nhất, tương tự Google Lens, để đọc và trích xuất TOÀN BỘ văn bản viết tay từ hình ảnh này với độ chính xác tuyệt đối. Văn bản này là một bài văn, vì vậy hãy cố gắng giữ nguyên cấu trúc đoạn văn, ngắt dòng và định dạng gốc. Không bỏ sót bất kỳ từ nào."
-    };
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { parts: [imagePart, textPart] },
-    });
-    
-    return response.text ?? '';
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash", 
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType: "image/jpeg", 
+                            data: base64Image
+                        }
+                    },
+                    {
+                        text: "Trích xuất toàn bộ văn bản viết tay hoặc in từ hình ảnh này. Chỉ trả về văn bản, giữ nguyên bố cục dòng nếu có thể."
+                    }
+                ]
+            }
+        });
+        return response.text || "";
+    } catch (e) {
+        console.error("Error extracting text from image:", e);
+        throw new Error("Failed to extract text from image.");
+    }
 }
 
-
-// --- SIMILARITY CHECK (PLAGIARISM) ---
 const similarityCheckSchema = {
-  type: Type.OBJECT,
-  properties: {
-    similarityPercentage: {
-      type: Type.NUMBER,
-      description: "Một con số từ 0 đến 100 thể hiện phần trăm tương đồng CAO NHẤT giữa bài viết mới và MỘT trong các bài viết đã có.",
+    type: Type.OBJECT,
+    properties: {
+        similarityPercentage: { type: Type.NUMBER, description: "Phần trăm tương đồng giữa 0 và 100." },
+        explanation: { type: Type.STRING, description: "Giải thích tại sao văn bản được coi là tương tự hoặc độc nhất." },
+        mostSimilarEssayIndex: { type: Type.INTEGER, description: "Chỉ số của bài văn giống nhất trong danh sách, hoặc -1 nếu không có." }
     },
-    explanation: {
-      type: Type.STRING,
-      description: "Giải thích ngắn gọn (1-2 câu) về lý do cho điểm tương đồng cao nhất đó, nêu bật những điểm giống nhau chính nếu có.",
-    },
-    mostSimilarEssayIndex: {
-        type: Type.NUMBER,
-        description: "Chỉ số (index, bắt đầu từ 0) của bài viết TƯƠNG ĐỒNG NHẤT trong danh sách 'Bài viết đã có để so sánh' được cung cấp."
-    }
-  },
-  required: ["similarityPercentage", "explanation", "mostSimilarEssayIndex"],
+    required: ["similarityPercentage", "explanation", "mostSimilarEssayIndex"]
 };
 
-const similarityCheckSystemInstruction = `Bạn là một công cụ kiểm tra đạo văn chính xác và hiệu quả. Nhiệm vụ của bạn là so sánh một "Bài viết mới" với một danh sách các "Bài viết đã có".
-- Đọc kỹ tất cả các bài viết.
-- Phân tích và tìm ra MỘT bài viết trong danh sách 'Bài viết đã có' có độ tương đồng CAO NHẤT so với 'Bài viết mới'.
-- Cung cấp TỶ LỆ PHẦN TRĂM TƯƠNG ĐỒNG của cặp bài viết giống nhau nhất đó.
-- Cung cấp một lời giải thích ngắn gọn cho kết quả.
-- Cung cấp CHỈ SỐ (index) của bài viết giống nhất trong danh sách 'Bài viết đã có'.
-- Trả về kết quả dưới dạng JSON theo schema đã cho.`;
-
-export async function checkSimilarityOnServer(newEssay: string, existingEssays: string[]): Promise<SimilarityCheckResult> {
+export async function checkSimilarityOnServer(currentEssay: string, existingEssays: string[]): Promise<SimilarityCheckResult> {
     if (existingEssays.length === 0) {
-        return { similarityPercentage: 0, explanation: "Đây là bài viết đầu tiên được nộp cho bài tập này.", mostSimilarEssayIndex: -1 };
+        return { similarityPercentage: 0, explanation: "Chưa có bài nộp nào khác để so sánh.", mostSimilarEssayIndex: -1 };
     }
+
+    // Limit existing essays to avoid huge payload, take last 10 for example
+    const essaysToCheck = existingEssays.slice(-10);
 
     const content = `
-        **Bài viết mới cần kiểm tra:**
-        """
-        ${newEssay}
-        """
+        Bài làm hiện tại:
+        """${currentEssay}"""
 
-        **Danh sách các bài viết đã có để so sánh:**
-        ${existingEssays.map((essay, index) => `
-        --- Bài viết ${index} ---
-        """
-        ${essay}
-        """
-        `).join('\n')}
-    `.trim();
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: content,
-      config: {
-        systemInstruction: similarityCheckSystemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: similarityCheckSchema,
-        temperature: 0,
-      },
-    });
+        Danh sách các bài làm đã có trong hệ thống (chỉ số bắt đầu từ 0):
+        ${JSON.stringify(essaysToCheck)}
 
-    const jsonText = extractJson(response.text);
-    if (!jsonText) {
-        throw new Error("AI similarity check response was empty.");
+        Hãy so sánh "Bài làm hiện tại" với danh sách các bài làm đã có để kiểm tra đạo văn hoặc sự trùng lặp ý tưởng đáng kể.
+        Trả về kết quả dạng JSON bao gồm phần trăm tương đồng, giải thích và chỉ số của bài giống nhất (theo danh sách cung cấp).
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: content,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: similarityCheckSchema,
+                temperature: 0,
+            }
+        });
+
+        const jsonText = extractJson(response.text);
+        if (!jsonText) return { similarityPercentage: 0, explanation: "Lỗi phân tích kết quả từ AI.", mostSimilarEssayIndex: -1 };
+        return JSON.parse(jsonText);
+    } catch (e) {
+         console.error("Error checking similarity:", e);
+         return { similarityPercentage: 0, explanation: "Không thể kiểm tra độ tương đồng do lỗi hệ thống.", mostSimilarEssayIndex: -1 };
     }
-    const parsedResponse = JSON.parse(jsonText);
-
-    if (
-        typeof parsedResponse.similarityPercentage !== 'number' || 
-        typeof parsedResponse.explanation !== 'string' ||
-        typeof parsedResponse.mostSimilarEssayIndex !== 'number'
-    ) {
-        throw new Error("Invalid response format from AI for similarity check.");
-    }
-    
-    // Clamp the value just in case
-    parsedResponse.similarityPercentage = Math.max(0, Math.min(100, parsedResponse.similarityPercentage));
-
-    return parsedResponse;
 }
