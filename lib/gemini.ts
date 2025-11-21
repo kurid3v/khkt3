@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Feedback, RubricItem, Problem, Answer, DetailedFeedbackItem, SimilarityCheckResult } from '@/types';
 
@@ -5,6 +6,12 @@ import type { Feedback, RubricItem, Problem, Answer, DetailedFeedbackItem, Simil
 // The SDK will throw a runtime error if called without a valid key, which is expected behavior.
 const apiKey = process.env.API_KEY || "BUILD_TIME_PLACEHOLDER";
 const ai = new GoogleGenAI({ apiKey });
+
+const checkApiKey = () => {
+    if (!process.env.API_KEY || process.env.API_KEY === "BUILD_TIME_PLACEHOLDER") {
+        throw new Error("API Key chưa được cấu hình trên server. Vui lòng kiểm tra biến môi trường API_KEY.");
+    }
+};
 
 /**
  * Extracts the first valid JSON object or array from a string.
@@ -80,9 +87,7 @@ function extractJson(text: string | undefined): string | null {
 export async function testConnectionOnServer(): Promise<{ success: boolean; message: string; latency: number }> {
     const start = Date.now();
     try {
-        if (!process.env.API_KEY) {
-             throw new Error("API Key chưa được cấu hình trên server.");
-        }
+        checkApiKey();
         await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: "Ping",
@@ -151,6 +156,7 @@ export async function gradeEssayOnServer(
     customMaxScore: string,
     exampleSubmission?: { essay: string; feedback: Feedback }
 ): Promise<Feedback> {
+  checkApiKey();
   const maxScoreNum = Number(customMaxScore) || 10;
   let rubricContent = '';
 
@@ -254,6 +260,7 @@ QUAN TRỌC:
 - Trả về kết quả dưới dạng một mảng JSON theo schema đã cho.`;
 
 export async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricItem, 'id'>[]> {
+  checkApiKey();
   const content = `Vui lòng phân tích và trích xuất biểu điểm từ Hướng dẫn chấm sau:\n\n"""${rawRubricText}"""`;
 
     const response = await ai.models.generateContent({
@@ -306,6 +313,7 @@ const readingCompSystemInstruction = `Bạn là một giáo viên dạy văn có
 - Trả về kết quả dưới dạng một mảng JSON theo schema đã cho, không chứa bất kỳ văn bản nào khác.`;
 
 export async function gradeReadingComprehensionOnServer(problem: Problem, answers: Answer[]): Promise<Feedback> {
+    checkApiKey();
     const questions = problem.questions || [];
     const passage = problem.passage || "";
     const detailedFeedback: DetailedFeedbackItem[] = [];
@@ -405,6 +413,7 @@ export async function gradeReadingComprehensionOnServer(problem: Problem, answer
 }
 
 export async function imageToTextOnServer(base64Image: string): Promise<string> {
+    checkApiKey();
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash", 
@@ -459,6 +468,7 @@ export async function checkSimilarityOnServer(currentEssay: string, existingEssa
     `;
 
     try {
+        checkApiKey();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: content,

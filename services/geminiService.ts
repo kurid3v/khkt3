@@ -1,5 +1,4 @@
 
-
 import type { Feedback, RubricItem, Problem, Answer, SimilarityCheckResult } from '@/types';
 
 async function callApi<T>(action: string, payload: unknown): Promise<T> {
@@ -10,9 +9,21 @@ async function callApi<T>(action: string, payload: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    console.error("API call failed with status:", response.status, "body:", errorBody);
-    throw new Error(`AI service failed with status ${response.status}`);
+    let errorMessage = `AI service failed with status ${response.status}`;
+    try {
+        const errorData = await response.json();
+        if (errorData.details) {
+            errorMessage = errorData.details;
+        } else if (errorData.error) {
+            errorMessage = errorData.error;
+        }
+    } catch (e) {
+        // Fallback if response is not JSON
+        const textBody = await response.text();
+        if (textBody) errorMessage = textBody;
+    }
+    console.error("API call failed:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -23,7 +34,7 @@ export async function testConnection(): Promise<{ success: boolean; message: str
     return await callApi<{ success: boolean; message: string; latency: number }>('test_connection', {});
   } catch (error) {
     console.error("Error in testConnection service:", error);
-    return { success: false, message: "Lỗi gọi API nội bộ.", latency: 0 };
+    return { success: false, message: error instanceof Error ? error.message : "Lỗi gọi API nội bộ.", latency: 0 };
   }
 }
 
@@ -32,7 +43,7 @@ export async function gradeEssay(problemId: string, prompt: string, essay: strin
     return await callApi<{ feedback: Feedback, similarityCheck: SimilarityCheckResult }>('grade', { problemId, prompt, essay, rubric, rawRubric, customMaxScore });
   } catch (error) {
     console.error("Error in gradeEssay service:", error);
-    throw new Error("Failed to get a valid response from the AI model.");
+    throw error; // Propagate the actual error message
   }
 }
 
@@ -41,7 +52,7 @@ export async function gradeReadingComprehension(problem: Problem, answers: Answe
     return await callApi<Feedback>('grade_reading_comprehension', { problem, answers });
   } catch (error) {
     console.error("Error in gradeReadingComprehension service:", error);
-    throw new Error("Failed to get a valid response from the AI model.");
+    throw error;
   }
 }
 
@@ -51,7 +62,7 @@ export async function parseRubric(rawRubricText: string): Promise<Omit<RubricIte
   } catch (error)
 {
     console.error("Error in parseRubric service:", error);
-    throw new Error("Failed to parse rubric using the AI model.");
+    throw error;
   }
 }
 
@@ -61,6 +72,6 @@ export async function getTextFromImage(base64Image: string): Promise<string> {
     return await callApi<string>('image_to_text', { base64Image });
   } catch (error) {
     console.error("Error in getTextFromImage service:", error);
-    throw new Error("Failed to extract text using the AI model.");
+    throw error;
   }
 }
