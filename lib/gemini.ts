@@ -4,12 +4,13 @@ import type { Feedback, RubricItem, Problem, Answer, DetailedFeedbackItem, Simil
 
 // Initialize with a fallback to avoid build-time errors. 
 // The SDK will throw a runtime error if called without a valid key, which is expected behavior.
-const apiKey = process.env.API_KEY || "BUILD_TIME_PLACEHOLDER";
+// Prioritize GEMINI_API_KEY as per user configuration.
+const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || "BUILD_TIME_PLACEHOLDER";
 const ai = new GoogleGenAI({ apiKey });
 
 const checkApiKey = () => {
-    if (!process.env.API_KEY || process.env.API_KEY === "BUILD_TIME_PLACEHOLDER") {
-        throw new Error("API Key chưa được cấu hình trên server. Vui lòng kiểm tra biến môi trường API_KEY.");
+    if (apiKey === "BUILD_TIME_PLACEHOLDER" || !apiKey) {
+        throw new Error("API Key chưa được cấu hình trên server. Vui lòng kiểm tra biến môi trường GEMINI_API_KEY.");
     }
 };
 
@@ -241,11 +242,11 @@ const rubricParsingSchema = {
         properties: {
             criterion: {
                 type: Type.STRING,
-                description: "Nội dung/tên của tiêu chí. Phải rõ ràng, cụ thể. Nếu một ý lớn có nhiều ý nhỏ, hãy tách thành các tiêu chí riêng biệt.",
+                description: "Nội dung/tên của tiêu chí (Luận điểm). Phải rõ ràng, cụ thể. Nếu một ý lớn có nhiều ý nhỏ, hãy tách thành các tiêu chí riêng biệt.",
             },
             maxScore: {
                 type: Type.NUMBER,
-                description: "Điểm tối đa cho tiêu chí này.",
+                description: "Điểm thành phần tối đa cho tiêu chí này.",
             },
         },
         required: ["criterion", "maxScore"],
@@ -253,11 +254,11 @@ const rubricParsingSchema = {
 };
 
 const rubricParsingSystemInstruction = `Bạn là một chuyên gia khảo thí giáo dục. Nhiệm vụ của bạn là đọc kỹ Hướng dẫn chấm bài dưới đây, sau đó phân tích và trích xuất TOÀN BỘ các tiêu chí chấm điểm và điểm số tương ứng một cách chi tiết và có cấu trúc.
-QUAN TRỌC:
+QUAN TRỌNG:
 - Tách các ý lớn thành các tiêu chí nhỏ, riêng biệt nếu có thể. Ví dụ: "Mở bài (0.5đ): Giới thiệu tác giả (0.25đ), tác phẩm (0.25đ)" phải được tách thành hai tiêu chí riêng.
 - Chỉ trích xuất các tiêu chí có điểm số rõ ràng. Bỏ qua các yêu cầu chung không có điểm.
 - Đảm bảo lấy được tất cả các tiêu chí.
-- Trả về kết quả dưới dạng một mảng JSON theo schema đã cho.`;
+- Trả về kết quả dưới dạng một mảng JSON, mỗi phần tử gồm "criterion" (Luận điểm) và "maxScore" (Điểm thành phần).`;
 
 export async function parseRubricOnServer(rawRubricText: string): Promise<Omit<RubricItem, 'id'>[]> {
   checkApiKey();

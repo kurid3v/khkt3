@@ -158,7 +158,7 @@ const EditProblemForm: React.FC<{ problem: Problem }> = ({ problem }) => {
             const itemsWithIds = parsedItems.map(item => ({...item, id: crypto.randomUUID()}))
             setRubricItems(itemsWithIds);
         } catch (err) {
-            setError("Không thể phân tích biểu điểm. Vui lòng kiểm tra lại văn bản hoặc thử lại.");
+            setError(err instanceof Error ? err.message : "Không thể phân tích biểu điểm. Vui lòng kiểm tra lại văn bản hoặc thử lại.");
         } finally {
             setIsParsingRubric(false);
         }
@@ -244,7 +244,7 @@ const EditProblemForm: React.FC<{ problem: Problem }> = ({ problem }) => {
                 Chỉnh sửa bài tập
             </h1>
             <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-card border border-border space-y-8">
-                 {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center">{error}</p>}
+                 {error && <p className="text-destructive bg-destructive/10 p-3 rounded-md text-center font-medium">{error}</p>}
                 
                 <div>
                     <label className={labelClass}>Loại bài tập</label>
@@ -271,77 +271,73 @@ const EditProblemForm: React.FC<{ problem: Problem }> = ({ problem }) => {
                             
                             {/* Editable Rubric Table */}
                             <div className="mt-4">
-                                {rubricItems.length > 0 ? (
-                                    <div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="font-semibold text-foreground">Chi tiết tiêu chí chấm điểm:</p>
-                                            <p className="text-sm font-medium text-muted-foreground">
-                                                Tổng: <span className="text-primary font-bold">{rubricItems.reduce((sum, item) => sum + (Number(item.maxScore) || 0), 0)}</span> điểm
-                                            </p>
-                                        </div>
-                                        <div className="border border-border rounded-lg overflow-hidden shadow-sm">
-                                            <table className="w-full text-sm">
-                                                <thead className="bg-secondary text-foreground font-semibold border-b border-border">
-                                                    <tr>
-                                                        <th className="p-3 text-left">Luận điểm</th>
-                                                        <th className="p-3 text-right w-36">Điểm thành phần</th>
-                                                        <th className="p-3 w-10"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-card">
-                                                    {rubricItems.map((item, index) => (
-                                                        <tr key={item.id || index} className="border-b border-border last:border-b-0">
-                                                            <td className="p-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={item.criterion}
-                                                                    onChange={(e) => handleRubricChange(index, 'criterion', e.target.value)}
-                                                                    className="w-full p-2 bg-transparent border border-transparent hover:border-border focus:border-primary rounded outline-none transition-colors"
-                                                                    placeholder="Nhập luận điểm..."
-                                                                />
-                                                            </td>
-                                                            <td className="p-2">
-                                                                <input
-                                                                    type="number"
-                                                                    value={item.maxScore}
-                                                                    onChange={(e) => handleRubricChange(index, 'maxScore', Number(e.target.value))}
-                                                                    className="w-full p-2 bg-transparent border border-transparent hover:border-border focus:border-primary rounded outline-none text-right transition-colors font-medium"
-                                                                    step="0.25"
-                                                                    min="0"
-                                                                />
-                                                            </td>
-                                                            <td className="p-2 text-center">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleDeleteRubricItem(index)}
-                                                                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                                                                    title="Xóa tiêu chí"
-                                                                >
-                                                                    <TrashIcon />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                            <button
-                                                type="button"
-                                                onClick={handleAddRubricItem}
-                                                className="w-full p-3 text-primary font-semibold bg-secondary/30 hover:bg-secondary transition-colors text-center text-sm"
-                                            >
-                                                + Thêm tiêu chí mới
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button 
-                                        type="button" 
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold text-foreground">Chi tiết tiêu chí chấm điểm:</p>
+                                    <p className="text-sm font-medium text-muted-foreground">
+                                        Tổng: <span className="text-primary font-bold">{rubricItems.reduce((sum, item) => sum + (Number(item.maxScore) || 0), 0)}</span> điểm
+                                    </p>
+                                </div>
+                                <div className="border border-border rounded-lg overflow-hidden shadow-sm">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-secondary text-foreground font-semibold border-b border-border">
+                                            <tr>
+                                                <th className="p-3 text-left">Luận điểm</th>
+                                                <th className="p-3 text-right w-36">Điểm thành phần</th>
+                                                <th className="p-3 w-10"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-card">
+                                            {rubricItems.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={3} className="p-4 text-center text-muted-foreground italic">
+                                                        Chưa có tiêu chí nào. Nhấn "Thêm tiêu chí mới" hoặc dùng AI để tạo.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {rubricItems.map((item, index) => (
+                                                <tr key={item.id || index} className="border-b border-border last:border-b-0 group">
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="text"
+                                                            value={item.criterion}
+                                                            onChange={(e) => handleRubricChange(index, 'criterion', e.target.value)}
+                                                            className="w-full p-2 bg-transparent border border-transparent hover:border-border focus:border-primary rounded outline-none transition-colors"
+                                                            placeholder="Nhập luận điểm..."
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="number"
+                                                            value={item.maxScore}
+                                                            onChange={(e) => handleRubricChange(index, 'maxScore', Number(e.target.value))}
+                                                            className="w-full p-2 bg-transparent border border-transparent hover:border-border focus:border-primary rounded outline-none text-right transition-colors font-medium"
+                                                            step="0.25"
+                                                            min="0"
+                                                            placeholder="Điểm"
+                                                        />
+                                                    </td>
+                                                    <td className="p-2 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteRubricItem(index)}
+                                                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                                            title="Xóa tiêu chí"
+                                                        >
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <button
+                                        type="button"
                                         onClick={handleAddRubricItem}
-                                        className="text-primary text-sm font-semibold hover:underline flex items-center gap-1"
+                                        className="w-full p-3 text-primary font-semibold bg-secondary/30 hover:bg-secondary transition-colors text-center text-sm border-t border-border"
                                     >
-                                        + Tạo bảng tiêu chí thủ công
+                                        + Thêm tiêu chí mới
                                     </button>
-                                )}
+                                </div>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -404,21 +400,4 @@ const EditProblemForm: React.FC<{ problem: Problem }> = ({ problem }) => {
             </form>
         </div>
     );
-}
-
-export default function EditProblemPage({ params }: { params: { problemId: string } }) {
-    const { problems, isLoading: isDataLoading } = useDataContext();
-
-    const problem = problems.find(p => p.id === params.problemId);
-
-    if (isDataLoading) {
-        return <div className="container mx-auto px-4 py-8 text-center">Đang tải dữ liệu...</div>;
-    }
-
-    if (!problem) {
-        notFound();
-        return null;
-    }
-
-    return <EditProblemForm key={problem.id} problem={problem} />;
 }

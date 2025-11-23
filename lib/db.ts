@@ -1,4 +1,6 @@
 
+import fs from 'fs';
+import path from 'path';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 import initialUsers from '../data/users.json';
 import initialProblems from '../data/problems.json';
@@ -37,7 +39,16 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.storeGlobal = store;
 }
 
-// Helper to simulate async DB delay slightly if needed, but for now we resolve immediately.
+// Helper to save data to JSON files
+const saveData = (fileName: string, data: any) => {
+    try {
+        const filePath = path.join(process.cwd(), 'data', fileName);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error(`Error saving data to ${fileName}:`, error);
+    }
+};
+
 export const db = {
     get all() {
         return {
@@ -59,12 +70,14 @@ export const db = {
         create: async (data: Omit<User, 'id'>) => {
             const newUser = { ...data, id: crypto.randomUUID() } as User;
             store.users.push(newUser);
+            saveData('users.json', store.users);
             return newUser;
         },
         update: async (id: string, data: Partial<User>) => {
             const index = store.users.findIndex(u => u.id === id);
             if (index === -1) throw new Error("User not found");
             store.users[index] = { ...store.users[index], ...data };
+            saveData('users.json', store.users);
             return store.users[index];
         },
         delete: async (id: string) => {
@@ -74,19 +87,27 @@ export const db = {
 
             // Reassign content ownership
             store.problems.forEach(p => { if (p.createdBy === id) p.createdBy = adminUser.id; });
+            saveData('problems.json', store.problems);
+            
             store.exams.forEach(e => { if (e.createdBy === id) e.createdBy = adminUser.id; });
+            saveData('exams.json', store.exams);
 
             // Delete related data
             store.submissions = store.submissions.filter(s => s.submitterId !== id);
+            saveData('submissions.json', store.submissions);
+            
             store.examAttempts = store.examAttempts.filter(a => a.studentId !== id);
+            saveData('examAttempts.json', store.examAttempts);
             
             // Handle classroom teacher removal and student removal
             store.classrooms = store.classrooms.filter(c => c.teacherId !== id);
             store.classrooms.forEach(c => {
                 c.studentIds = c.studentIds.filter(sid => sid !== id);
             });
+            saveData('classrooms.json', store.classrooms);
 
             store.users = store.users.filter(u => u.id !== id);
+            saveData('users.json', store.users);
             return true;
         }
     },
@@ -101,6 +122,7 @@ export const db = {
                 classroomIds: data.classroomIds ?? [],
             } as Problem;
             store.problems.push(newProblem);
+            saveData('problems.json', store.problems);
             return newProblem;
         },
         update: async (id: string, data: Partial<Problem>) => {
@@ -112,10 +134,12 @@ export const db = {
                  rubricItems: data.rubricItems ?? store.problems[index].rubricItems,
                  questions: data.questions ?? store.problems[index].questions
              };
+            saveData('problems.json', store.problems);
             return store.problems[index];
         },
         delete: async (id: string) => {
             store.problems = store.problems.filter(p => p.id !== id);
+            saveData('problems.json', store.problems);
             return { id };
         }
     },
@@ -130,6 +154,7 @@ export const db = {
                 similarityCheck: data.similarityCheck ?? undefined,
             } as Submission;
             store.submissions.push(newSubmission);
+            saveData('submissions.json', store.submissions);
             return newSubmission;
         },
         update: async (id: string, data: Partial<Submission>) => {
@@ -142,6 +167,7 @@ export const db = {
                 answers: data.answers ?? store.submissions[index].answers,
                 similarityCheck: data.similarityCheck ?? store.submissions[index].similarityCheck
             };
+            saveData('submissions.json', store.submissions);
             return store.submissions[index];
         },
     },
@@ -156,10 +182,12 @@ export const db = {
                 classroomIds: data.classroomIds ?? [],
             } as Exam;
             store.exams.push(newExam);
+            saveData('exams.json', store.exams);
             return newExam;
         },
         delete: async (id: string) => {
             store.exams = store.exams.filter(e => e.id !== id);
+            saveData('exams.json', store.exams);
             return { id };
         }
     },
@@ -174,6 +202,7 @@ export const db = {
                 submissionIds: [],
             } as ExamAttempt;
             store.examAttempts.push(newAttempt);
+            saveData('examAttempts.json', store.examAttempts);
             return newAttempt;
         },
         update: async (id: string, data: Partial<ExamAttempt>) => {
@@ -184,6 +213,7 @@ export const db = {
                  ...data,
                  visibilityStateChanges: data.visibilityStateChanges ?? store.examAttempts[index].visibilityStateChanges
              };
+            saveData('examAttempts.json', store.examAttempts);
             return store.examAttempts[index];
         },
     },
@@ -207,12 +237,14 @@ export const db = {
                 joinCode: generateJoinCode(),
             } as Classroom;
             store.classrooms.push(newClassroom);
+            saveData('classrooms.json', store.classrooms);
             return newClassroom;
         },
         update: async (id: string, data: Partial<Classroom>) => {
             const index = store.classrooms.findIndex(c => c.id === id);
             if (index === -1) throw new Error("Classroom not found");
             store.classrooms[index] = { ...store.classrooms[index], ...data };
+            saveData('classrooms.json', store.classrooms);
             return store.classrooms[index];
         },
         delete: async (id: string) => {
@@ -222,12 +254,17 @@ export const db = {
                     p.classroomIds = p.classroomIds.filter(cid => cid !== id);
                 }
             });
+            saveData('problems.json', store.problems);
+
             store.exams.forEach(e => {
                 if (e.classroomIds) {
                     e.classroomIds = e.classroomIds.filter(cid => cid !== id);
                 }
             });
+            saveData('exams.json', store.exams);
+
             store.classrooms = store.classrooms.filter(c => c.id !== id);
+            saveData('classrooms.json', store.classrooms);
             return true;
         }
     }
