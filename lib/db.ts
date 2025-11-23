@@ -2,12 +2,39 @@
 import fs from 'fs';
 import path from 'path';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
-import initialUsers from '../data/users.json';
-import initialProblems from '../data/problems.json';
-import initialClassrooms from '../data/classrooms.json';
-import initialExams from '../data/exams.json';
-import initialSubmissions from '../data/submissions.json';
-import initialExamAttempts from '../data/examAttempts.json';
+
+// Define the data directory path
+const DATA_DIR = path.join(process.cwd(), 'data');
+
+// Helper to load data from JSON files
+const loadData = <T>(fileName: string, fallback: T): T => {
+  try {
+    const filePath = path.join(DATA_DIR, fileName);
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      // Handle empty files
+      if (!fileContent.trim()) return fallback;
+      const data = JSON.parse(fileContent);
+      return data;
+    }
+  } catch (error) {
+    console.error(`Error loading data from ${fileName}:`, error);
+  }
+  return fallback;
+};
+
+// Helper to save data to JSON files
+const saveData = (fileName: string, data: any) => {
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        const filePath = path.join(DATA_DIR, fileName);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error(`Error saving data to ${fileName}:`, error);
+    }
+};
 
 // In-memory store class
 class Store {
@@ -19,12 +46,32 @@ class Store {
   classrooms: Classroom[];
 
   constructor() {
-    this.users = [...initialUsers] as User[];
-    this.problems = [...initialProblems] as Problem[];
-    this.submissions = [...initialSubmissions] as Submission[];
-    this.exams = [...initialExams] as Exam[];
-    this.examAttempts = [...initialExamAttempts] as ExamAttempt[];
-    this.classrooms = [...initialClassrooms] as Classroom[];
+    // Load initial data from files
+    this.users = loadData<User[]>('users.json', []);
+    this.problems = loadData<Problem[]>('problems.json', []);
+    this.submissions = loadData<Submission[]>('submissions.json', []);
+    this.exams = loadData<Exam[]>('exams.json', []);
+    this.examAttempts = loadData<ExamAttempt[]>('examAttempts.json', []);
+    this.classrooms = loadData<Classroom[]>('classrooms.json', []);
+
+    // Bootstrap admin user if user list is empty (e.g. first run or missing file)
+    if (this.users.length === 0) {
+        this.users = [{ "id": "user_admin_1", "username": "adminuser", "displayName": "AdminUser", "role": "admin", "password": "admin" }];
+        saveData('users.json', this.users);
+    }
+    
+    // Bootstrap initial problem if empty (optional, keeps demo data active)
+    if (this.problems.length === 0) {
+         this.problems = [{
+            "id": "problem_1",
+            "title": "Nghị luận về \"Vùng an toàn\"",
+            "type": "essay",
+            "prompt": "Từ trải nghiệm cá nhân, hãy viết bài văn nghị luận (khoảng 500 chữ) trình bày suy nghĩ của bạn về việc thế hệ trẻ nên bước ra khỏi vùng an toàn của bản thân.",
+            "createdBy": "user_teacher_1",
+            "createdAt": 1672574400000
+        }];
+        saveData('problems.json', this.problems);
+    }
   }
 }
 
@@ -38,16 +85,6 @@ const store = globalThis.storeGlobal ?? new Store();
 if (process.env.NODE_ENV !== 'production') {
   globalThis.storeGlobal = store;
 }
-
-// Helper to save data to JSON files
-const saveData = (fileName: string, data: any) => {
-    try {
-        const filePath = path.join(process.cwd(), 'data', fileName);
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error(`Error saving data to ${fileName}:`, error);
-    }
-};
 
 export const db = {
     get all() {
