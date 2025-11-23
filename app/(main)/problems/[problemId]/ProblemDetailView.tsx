@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -9,9 +10,11 @@ import StudentGraderView from '@/components/StudentGraderView';
 import ReadingComprehensionSolver from './ReadingComprehensionSolver'; // New component
 import { useDataContext } from '@/context/DataContext';
 import { deleteProblem } from '@/app/actions';
+import { gradeEssay, gradeReadingComprehension } from '@/services/geminiService';
 import TrashIcon from '@/components/icons/TrashIcon';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import PencilIcon from '@/components/icons/PencilIcon';
+import ArrowPathIcon from '@/components/icons/ArrowPathIcon';
 
 interface ProblemDetailViewProps {
     problem: Problem;
@@ -22,7 +25,14 @@ interface ProblemDetailViewProps {
 }
 
 // Teacher/Admin view of submissions for this problem
-const TeacherSubmissionsView: React.FC<{ problem: Problem, submissions: Submission[], users: Omit<User, 'password'>[] }> = ({ problem, submissions, users }) => {
+const TeacherSubmissionsView: React.FC<{ 
+    problem: Problem, 
+    submissions: Submission[], 
+    users: Omit<User, 'password'>[],
+    onRegradeAll: () => void,
+    isRegrading: boolean,
+    regradeProgress: string
+}> = ({ problem, submissions, users, onRegradeAll, isRegrading, regradeProgress }) => {
     const router = useRouter();
 
     if (submissions.length === 0) {
@@ -35,6 +45,23 @@ const TeacherSubmissionsView: React.FC<{ problem: Problem, submissions: Submissi
 
     return (
         <div className="bg-card p-4 rounded-xl shadow-sm border border-border">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-foreground">Danh sách</h3>
+                {isRegrading ? (
+                    <span className="text-sm font-semibold text-blue-600 animate-pulse">
+                        Đang chấm lại: {regradeProgress}
+                    </span>
+                ) : (
+                    <button 
+                        onClick={onRegradeAll}
+                        className="text-sm flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                        title="Dùng AI chấm lại toàn bộ bài nộp theo cấu hình hiện tại"
+                    >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Chấm lại tất cả
+                    </button>
+                )}
+            </div>
             <div className="overflow-auto max-h-96">
                 <table className="w-full">
                     <thead>
@@ -70,8 +97,11 @@ const TeacherSubmissionsView: React.FC<{ problem: Problem, submissions: Submissi
 
 export default function ProblemDetailView({ problem, problemSubmissions, users, currentUser, teacherName }: ProblemDetailViewProps) {
     const router = useRouter();
-    const { addSubmissionAndSyncState } = useDataContext();
+    const { addSubmissionAndSyncState, updateSubmission } = useDataContext();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isRegradeModalOpen, setIsRegradeModalOpen] = useState(false);
+    const [isRegrading, setIsRegrading] = useState(false);
+    const [regradeProgress, setRegradeProgress] = useState('');
     const [isPending, startTransition] = useTransition();
 
     if (!currentUser) {
@@ -90,9 +120,51 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
             console.error(error);
         }
     };
-    
-    const handleReadingCompSubmission = async (answers: Answer[]) => {
-        // The solver component will handle the grading and return the full submission data
+
+    const handleRegradeAll = async () => {
+        setIsRegradeModalOpen(false);
+        setIsRegrading(true);
+        const total = problemSubmissions.length;
+        let count = 0;
+
+        for (const sub of problemSubmissions) {
+            count++;
+            setRegradeProgress(`${count}/${total}`);
+            try {
+                let updatedFeedback;
+                let updatedSimilarity;
+
+                if (problem.type === 'essay') {
+                    if (!sub.essay) continue;
+                    const result = await gradeEssay(
+                        problem.id,
+                        problem.prompt!,
+                        sub.essay,
+                        problem.rubricItems || [],
+                        problem.rawRubric || '',
+                        String(problem.customMaxScore || '10')
+                    );
+                    updatedFeedback = result.feedback;
+                    updatedSimilarity = result.similarityCheck;
+                } else {
+                    if (!sub.answers) continue;
+                    updatedFeedback = await gradeReadingComprehension(problem, sub.answers);
+                }
+
+                if (updatedFeedback) {
+                    await updateSubmission(sub.id, {
+                        feedback: updatedFeedback,
+                        similarityCheck: updatedSimilarity,
+                        lastEditedByTeacherAt: undefined // Reset teacher edit timestamp as AI regraded it
+                    });
+                }
+            } catch (error) {
+                console.error(`Failed to regrade submission ${sub.id}:`, error);
+            }
+        }
+        setIsRegrading(false);
+        setRegradeProgress('');
+        router.refresh();
     };
 
     const handleDeleteProblem = () => {
@@ -219,7 +291,14 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                             {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
                                 <div>
                                     <h2 className="text-2xl font-bold text-foreground mb-4">Danh sách bài nộp</h2>
-                                    <TeacherSubmissionsView problem={problem} submissions={problemSubmissions} users={users} />
+                                    <TeacherSubmissionsView 
+                                        problem={problem} 
+                                        submissions={problemSubmissions} 
+                                        users={users} 
+                                        onRegradeAll={() => setIsRegradeModalOpen(true)}
+                                        isRegrading={isRegrading}
+                                        regradeProgress={regradeProgress}
+                                    />
                                 </div>
                             )}
                             <div>
@@ -236,6 +315,15 @@ export default function ProblemDetailView({ problem, problemSubmissions, users, 
                 onConfirm={handleDeleteProblem}
                 title="Xác nhận xóa bài tập"
                 message={`Bạn có chắc chắn muốn xóa bài tập "${problem.title}" không? Hành động này sẽ xóa vĩnh viễn tất cả các bài nộp liên quan.`}
+            />
+            <ConfirmationModal
+                isOpen={isRegradeModalOpen}
+                onClose={() => setIsRegradeModalOpen(false)}
+                onConfirm={handleRegradeAll}
+                title="Xác nhận chấm lại toàn bộ"
+                message="Hành động này sẽ gửi tất cả bài nộp của học sinh đến AI để chấm điểm lại dựa trên hướng dẫn chấm hiện tại. Điểm số cũ sẽ bị ghi đè. Quá trình này có thể mất vài phút."
+                confirmButtonText="Chấm lại ngay"
+                confirmButtonClass="bg-blue-600 hover:bg-blue-700"
             />
         </>
     );
