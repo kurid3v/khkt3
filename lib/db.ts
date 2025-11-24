@@ -4,7 +4,7 @@ import path from 'path';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
 
 // Define the data directory path
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = path.join((process as any).cwd(), 'data');
 
 // Helper to load data from JSON files
 const loadData = <T>(fileName: string, fallback: T): T => {
