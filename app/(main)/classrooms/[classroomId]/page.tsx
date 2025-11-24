@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -6,7 +7,7 @@ import { useRouter, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/context/DataContext';
 import { useSession } from '@/context/SessionContext';
-import { removeStudentFromClass, deleteClassroom } from '@/app/actions';
+import { removeStudentFromClass, deleteClassroom, toggleClassroomVisibility } from '@/app/actions';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import UsersIcon from '@/components/icons/UsersIcon';
 import TrashIcon from '@/components/icons/TrashIcon';
@@ -83,6 +84,13 @@ export default function ClassroomDetailPage({ params }: { params: { classroomId:
         });
     };
 
+    const handleToggleVisibility = () => {
+        startTransition(async () => {
+            await toggleClassroomVisibility(classroomId, !classroom.isPublic);
+            await refetchData();
+        });
+    };
+
     return (
         <>
             <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -94,7 +102,14 @@ export default function ClassroomDetailPage({ params }: { params: { classroomId:
                     {/* Left Column: Info & Actions */}
                     <div className="lg:col-span-1 space-y-6">
                         <div className="bg-card p-6 rounded-xl shadow-card border border-border">
-                            <h1 className="text-2xl font-bold text-foreground mb-1">{classroom.name}</h1>
+                            <div className="flex justify-between items-start">
+                                <h1 className="text-2xl font-bold text-foreground mb-1">{classroom.name}</h1>
+                                {classroom.isPublic ? (
+                                    <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap">Công khai</span>
+                                ) : (
+                                    <span className="bg-slate-100 text-slate-800 text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap">Riêng tư</span>
+                                )}
+                            </div>
                             <p className="text-muted-foreground text-sm">Giáo viên: {teacher?.displayName || 'N/A'}</p>
                             
                             <div className="mt-6">
@@ -122,6 +137,21 @@ export default function ClassroomDetailPage({ params }: { params: { classroomId:
 
                         <div className="bg-card p-6 rounded-xl shadow-card border border-border">
                              <h3 className="font-bold text-foreground mb-4">Cài đặt</h3>
+                             
+                             <div className="flex items-center justify-between mb-6">
+                                <span className="text-sm font-medium">Trạng thái lớp</span>
+                                <button
+                                    onClick={handleToggleVisibility}
+                                    disabled={isPending}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${classroom.isPublic ? 'bg-green-500' : 'bg-slate-300'}`}
+                                >
+                                    <span className="sr-only">Toggle public status</span>
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${classroom.isPublic ? 'translate-x-6' : 'translate-x-1'}`}
+                                    />
+                                </button>
+                             </div>
+
                              <button 
                                 onClick={() => setIsDeleteClassModalOpen(true)}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-destructive/10 text-destructive font-semibold rounded-lg hover:bg-destructive/20 transition-colors"

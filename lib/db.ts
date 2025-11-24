@@ -1,4 +1,5 @@
 
+
 import fs from 'fs';
 import path from 'path';
 import type { User, Problem, Submission, Exam, ExamAttempt, Classroom } from '@/types';
@@ -272,6 +273,7 @@ export const db = {
                 id: crypto.randomUUID(),
                 studentIds: [],
                 joinCode: generateJoinCode(),
+                isPublic: data.isPublic || false, // Default to private
             } as Classroom;
             store.classrooms.push(newClassroom);
             saveData('classrooms.json', store.classrooms);

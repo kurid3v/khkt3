@@ -15,6 +15,7 @@ export interface Classroom {
   teacherId: string;
   studentIds: string[];
   joinCode: string;
+  isPublic?: boolean; // New field for public/private status
 }
 
 export interface Option {

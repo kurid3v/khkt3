@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use server';
 
@@ -213,9 +214,9 @@ export async function addSubmission(submissionData: Omit<Submission, 'id' | 'sub
 }
 
 // --- Classrooms ---
-export async function createClassroom(name: string, teacherId: string) {
+export async function createClassroom(name: string, teacherId: string, isPublic: boolean = false) {
     if (!name.trim()) throw new Error("Tên lớp không được để trống.");
-    await db.classrooms.create({ name, teacherId });
+    await db.classrooms.create({ name, teacherId, isPublic });
     revalidatePath('/classrooms');
 }
 
@@ -240,6 +241,20 @@ export async function joinClassroom(joinCode: string, studentId: string) {
     revalidatePath('/classrooms');
 }
 
+export async function joinPublicClassroom(classId: string, studentId: string) {
+    const classroom = await db.classrooms.find(c => c.id === classId);
+    if (!classroom) throw new Error("Không tìm thấy lớp học.");
+    if (!classroom.isPublic) throw new Error("Lớp học này không công khai.");
+    
+    if (classroom.studentIds.includes(studentId)) {
+        throw new Error("Bạn đã tham gia lớp học này rồi.");
+    }
+
+    const updatedStudentIds = [...classroom.studentIds, studentId];
+    await db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
+    revalidatePath('/classrooms');
+}
+
 export async function leaveClassroom(classroomId: string, studentId: string) {
     const classroom = await db.classrooms.find(c => c.id === classroomId);
     if (!classroom) throw new Error("Không tìm thấy lớp học.");
@@ -257,4 +272,13 @@ export async function removeStudentFromClass(classroomId: string, studentId: str
     await db.classrooms.update(classroom.id, { studentIds: updatedStudentIds });
     revalidatePath(`/classrooms`);
     revalidatePath(`/classrooms/${classroomId}`);
+}
+
+export async function toggleClassroomVisibility(classroomId: string, isPublic: boolean) {
+    const classroom = await db.classrooms.find(c => c.id === classroomId);
+    if (!classroom) throw new Error("Không tìm thấy lớp học.");
+
+    await db.classrooms.update(classroomId, { isPublic });
+    revalidatePath(`/classrooms/${classroomId}`);
+    revalidatePath('/classrooms');
 }
