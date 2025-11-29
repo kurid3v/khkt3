@@ -37,11 +37,12 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
     ? exams.find(e => e.id === ongoingGlobalAttempt.examId) 
     : null;
 
+  const isTeacherOrAdmin = currentUser.role === 'teacher' || currentUser.role === 'admin';
+
   // FIX: Make proceedToExam async and await the startExamAttempt call.
   const proceedToExam = async () => {
     if (userAttemptForThisExam) {
       // Resume existing attempt
-      // FIX: Corrected a typo in the variable name `userAttemptForThisExam`.
       router.push(`/exams/${exam.id}/take/${userAttemptForThisExam.id}`);
     } else {
       // Create new attempt
@@ -321,14 +322,14 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
           </header>
 
           <main>
-              {(currentUser.role === 'teacher' || currentUser.role === 'admin') && (
+              {isTeacherOrAdmin && (
                 <div className="mb-6 border-b border-slate-200">
                     <button onClick={() => setActiveTab('questions')} className={`px-4 py-2 font-semibold ${activeTab === 'questions' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}>Câu hỏi</button>
                     <button onClick={() => setActiveTab('monitoring')} className={`px-4 py-2 font-semibold ${activeTab === 'monitoring' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}>Giám sát</button>
                 </div>
               )}
             
-            {activeTab === 'questions' && (
+            {activeTab === 'questions' && isTeacherOrAdmin && (
                  <>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-3xl font-bold text-slate-800">
@@ -374,7 +375,7 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
                 </>
             )}
 
-            {activeTab === 'monitoring' && <MonitoringTab />}
+            {activeTab === 'monitoring' && isTeacherOrAdmin && <MonitoringTab />}
              
           </main>
       </div>
